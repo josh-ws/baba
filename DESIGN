@@ -1,0 +1,78 @@
+
+enum Noun {
+    Baba,
+    Key,
+}
+
+enum Verb {
+    Is,
+}
+
+enum Property {
+    You,
+    Win,
+}
+
+enum Text {
+    Noun(Noun),
+    Verb(Verb),
+    Property(Property),
+    Not,
+    And,
+    ...etc
+}
+
+enum UnitKind {
+    Object(Noun),
+    Text(Text),
+}
+
+struct Unit {
+    id: Guid,
+    kind: UnitKind,
+    slug: String, // e.g. "baba", "key", "you" used for level loading/saving
+}
+
+Note ^ no prototype for the unit yet until we go data-driven
+
+struct Cell {
+    units: Vec<Unit>
+}
+
+struct Rule {
+    ...
+}
+
+struct World {
+    grid: Vec<Cell>,
+}
+
+
+Pipeline:
+1. parse rules from the grid U->D and L->R in a maximal run to create a Vec<Rule>
+2. read input
+3. do movements: YOU, MOVE, AUTO, NUDGE...
+4. reparse
+5. object transformations via IS
+6. reparse
+7. additional "acted on by entity" movements: TELE, SHIFT...
+8. reparse
+9. cleanup: remove stacks of same object beyond a certain depth (retail game allows 6)
+10. object falling: FALL_LEFT, FALL_RIGHT, ...
+11. reparse
+12. entity status updates: LEFT, TURN, FLOAT, ...
+13. object falling again
+14. level updates: (this is completely out of scope for now)
+15. block updates: HOT, MELT, DEFEAT, OPEN, SHUT, ...
+16. reparse
+17. check for win conditions and no-YOU state
+
+vertical slice for a playable level 1:
+1. parse -> Vec<Rule>
+2. snapshot
+3. input
+4. move YOU and do push chains
+5. reparse
+6. transformations
+7. reparse
+8. check win conditions
