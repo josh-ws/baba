@@ -18,27 +18,20 @@ impl UnitKind {
     }
 
     pub fn to_ascii(self) -> &'static str {
-        match self {
-            UnitKind::Object(Noun::Baba) => "ba",
-            UnitKind::Text(Text::Noun(Noun::Baba)) => "BA",
-            UnitKind::Text(Text::Operator(Operator::Is)) => "IS",
-            UnitKind::Text(Text::Property(Property::You)) => "YO",
+        for (c, kind) in CODES {
+            if *kind == self {
+                return *c;
+            }
         }
+        unreachable!("no ascii code for {self:?}");
     }
 }
 
 impl Cell {
-    pub fn to_ascii(&self) -> String {
-        if self.units.is_empty() {
-            "..".to_string()
-        } else {
-            self.units
-                .first()
-                .unwrap()
-                .clone()
-                .kind
-                .to_ascii()
-                .to_string()
+    pub fn to_ascii(&self) -> &'static str {
+        match self.units.last() {
+            Some(u) => u.kind.to_ascii(),
+            None => "..",
         }
     }
 }
@@ -64,7 +57,7 @@ impl Grid {
         self.cells
             .iter()
             .map(|cell| cell.to_ascii())
-            .collect::<Vec<String>>()
+            .collect::<Vec<&str>>()
             .join(" ")
     }
 }
@@ -74,8 +67,16 @@ mod tests {
     use super::*;
 
     #[test]
-    pub fn ascii_round_trip() {
+    fn ascii_round_trip() {
         let case = "BA IS YO .. ba";
         assert_eq!(Grid::from_ascii(case).to_ascii(), case);
+    }
+
+    #[test]
+    fn every_code_round_trips() {
+        for (c, kind) in CODES {
+            assert_eq!(UnitKind::from_ascii(c), *kind);
+            assert_eq!(kind.to_ascii(), *c);
+        }
     }
 }

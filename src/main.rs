@@ -1,4 +1,6 @@
 mod ascii;
+mod lex;
+mod world;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Noun {
@@ -28,7 +30,7 @@ enum UnitKind {
     Text(Text),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct Unit {
     id: u64,
     kind: UnitKind,
@@ -40,7 +42,7 @@ impl Unit {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct Cell {
     units: Vec<Unit>,
 }
@@ -49,13 +51,9 @@ impl Cell {
     fn new() -> Self {
         Self { units: Vec::new() }
     }
-
-    fn from_units(units: Vec<Unit>) -> Self {
-        Self { units }
-    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct Grid {
     cells: Vec<Cell>,
     w: i32,
@@ -78,10 +76,6 @@ impl Grid {
         self.next_id += 1;
         id
     }
-}
-
-struct World {
-    grid: Grid,
 }
 
 fn main() {
