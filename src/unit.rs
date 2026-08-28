@@ -3,6 +3,7 @@ pub enum Noun {
     Baba,
     Keke,
     Text,
+    Wall,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -13,6 +14,7 @@ pub enum Operator {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Property {
     You,
+    Stop,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

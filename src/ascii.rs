@@ -8,10 +8,13 @@ use crate::{
 const CODES: &[(&str, UnitKind)] = &[
     ("ba", UnitKind::Object(Noun::Baba)),
     ("ke", UnitKind::Object(Noun::Keke)),
+    ("wa", UnitKind::Object(Noun::Wall)),
     ("BA", UnitKind::Text(Text::Noun(Noun::Baba))),
     ("KE", UnitKind::Text(Text::Noun(Noun::Keke))),
+    ("WA", UnitKind::Text(Text::Noun(Noun::Wall))),
     ("IS", UnitKind::Text(Text::Operator(Operator::Is))),
     ("YO", UnitKind::Text(Text::Property(Property::You))),
+    ("ST", UnitKind::Text(Text::Property(Property::Stop))),
 ];
 
 impl UnitKind {

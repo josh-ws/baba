@@ -50,7 +50,9 @@ impl<'a> Turn<'a> {
         for id in you {
             if let Some(from) = self.grid().find_unit(id) {
                 let to = from.shift(self.input);
-                if self.grid.in_bounds(to) {
+                if self.grid.in_bounds(to)
+                    && !cell_has(self.grid.at(to), &self.rules, Property::Stop)
+                {
                     self.grid.move_unit(id, from, to);
                 }
             }
@@ -68,6 +70,10 @@ fn query_prop(grid: &Grid, rules: &Rules, prop: Property) -> Vec<u64> {
         .filter(|u| rules.has(u.noun(), prop))
         .map(|u| u.id())
         .collect::<Vec<u64>>()
+}
+
+fn cell_has(cell: &Cell, rules: &Rules, prop: Property) -> bool {
+    cell.units().iter().any(|u| rules.has(u.noun(), prop))
 }
 
 #[cfg(test)]
@@ -98,5 +104,19 @@ mod tests {
         let mut grid = Grid::from_ascii("BA IS YO\n.. .. ba\n.. .. ..");
         Turn::new(&mut grid, Direction::East).run();
         assert_eq!("BA IS YO\n.. .. ba\n.. .. ..", grid.to_ascii());
+    }
+
+    #[test]
+    fn move_blocked_by_stop() {
+        let mut grid = Grid::from_ascii("BA IS YO .. ba wa .. WA IS ST");
+        Turn::new(&mut grid, Direction::East).run();
+        assert_eq!("BA IS YO .. ba wa .. WA IS ST", grid.to_ascii());
+    }
+
+    #[test]
+    fn move_not_blocked_when_no_stop() {
+        let mut grid = Grid::from_ascii("BA IS YO .. ba wa");
+        Turn::new(&mut grid, Direction::East).run();
+        assert_eq!("BA IS YO .. .. ba", grid.to_ascii());
     }
 }
