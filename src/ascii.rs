@@ -1,8 +1,15 @@
-use crate::{Cell, Grid, Noun, Operator, Property, Text, Unit, UnitKind, lex::Run};
+use crate::{
+    lex::Run,
+    rule::{Complement, Rule},
+    unit::{Noun, Operator, Property, Text, Unit, UnitKind},
+    world::{Cell, Grid, Pos},
+};
 
 const CODES: &[(&str, UnitKind)] = &[
     ("ba", UnitKind::Object(Noun::Baba)),
+    ("ke", UnitKind::Object(Noun::Keke)),
     ("BA", UnitKind::Text(Text::Noun(Noun::Baba))),
+    ("KE", UnitKind::Text(Text::Noun(Noun::Keke))),
     ("IS", UnitKind::Text(Text::Operator(Operator::Is))),
     ("YO", UnitKind::Text(Text::Property(Property::You))),
 ];
@@ -20,7 +27,7 @@ impl UnitKind {
     pub fn to_ascii(self) -> &'static str {
         for (c, kind) in CODES {
             if *kind == self {
-                return *c;
+                return c;
             }
         }
         unreachable!("no ascii code for {self:?}");
@@ -29,8 +36,8 @@ impl UnitKind {
 
 impl Cell {
     pub fn to_ascii(&self) -> &'static str {
-        match self.units.last() {
-            Some(u) => u.kind.to_ascii(),
+        match self.units().last() {
+            Some(u) => u.kind().to_ascii(),
             None => "..",
         }
     }
@@ -52,8 +59,8 @@ impl Grid {
                     continue;
                 }
                 let id = grid.next();
-                grid.cells[y * w as usize + x]
-                    .units
+                grid.at_mut(Pos::new(x as i32, y as i32))
+                    .units_mut()
                     .push(Unit::new(id, UnitKind::from_ascii(code)));
             }
         }
@@ -61,11 +68,11 @@ impl Grid {
     }
 
     pub fn to_ascii(&self) -> String {
-        if self.w == 0 {
+        if self.width() == 0 {
             return String::new();
         }
-        self.cells
-            .chunks(self.w as usize)
+        self.cells()
+            .chunks(self.width() as usize)
             .map(|row| {
                 row.iter()
                     .map(|cell| cell.to_ascii())
@@ -81,10 +88,22 @@ impl Run {
     pub fn to_ascii(&self) -> String {
         self.words()
             .iter()
-            .map(|f| UnitKind::Text(f.clone()))
+            .map(|f| UnitKind::Text(*f))
             .map(|f| f.to_ascii().to_string())
             .collect::<Vec<String>>()
             .join(" ")
+    }
+}
+
+impl Rule {
+    pub fn to_ascii(&self) -> String {
+        let subject = UnitKind::Text(Text::Noun(self.subject)).to_ascii();
+        let operator = UnitKind::Text(Text::Operator(self.operator)).to_ascii();
+        let complement = match self.complement {
+            Complement::Transformation(n) => UnitKind::Text(Text::Noun(n)),
+            Complement::Property(p) => UnitKind::Text(Text::Property(p)),
+        };
+        format!("{subject} {operator} {}", complement.to_ascii())
     }
 }
 

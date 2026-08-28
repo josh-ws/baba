@@ -1,5 +1,6 @@
 use crate::{
-    Grid, Text,
+    Grid,
+    unit::Text,
     world::{Direction, Pos},
 };
 
