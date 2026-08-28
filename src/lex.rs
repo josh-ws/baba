@@ -68,8 +68,19 @@ mod tests {
 
     #[test]
     fn lex_single_row() {
+        assert_lex_match("", vec![]);
+        assert_lex_match(".. .. ..", vec![]);
+        assert_lex_match("BA", vec![]);
+        assert_lex_match("BA IS", vec![]);
         assert_lex_match("BA IS YO", vec!["BA IS YO"]);
-        assert_lex_match("BA IS YO BA IS YO", vec!["BA IS YO BA IS YO"]);
+        assert_lex_match("ba ba ba", vec![]);
+        assert_lex_match("ba BA IS YO ba", vec!["BA IS YO"]);
+        assert_lex_match("BA IS YO IS YO", vec!["BA IS YO IS YO"]);
+        assert_lex_match("IS IS IS", vec!["IS IS IS"]);
+        assert_lex_match("YO BA IS", vec!["YO BA IS"]);
+        assert_lex_match(".. BA IS YO", vec!["BA IS YO"]);
+        assert_lex_match("BA IS YO ..", vec!["BA IS YO"]);
+        assert_lex_match("BA IS YO .. .. .. BA IS YO", vec!["BA IS YO", "BA IS YO"]);
         assert_lex_match("BA IS YO .. BA IS YO", vec!["BA IS YO", "BA IS YO"]);
         assert_lex_match("BA IS YO ba BA IS YO", vec!["BA IS YO", "BA IS YO"]);
     }

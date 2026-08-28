@@ -5,6 +5,7 @@ use crate::{
 
 mod ascii;
 mod lex;
+mod rule;
 mod world;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
