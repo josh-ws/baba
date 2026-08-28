@@ -108,11 +108,13 @@ impl Grid {
     }
 
     pub fn at(&self, pos: Pos) -> &Cell {
+        debug_assert!(self.in_bounds(pos));
         let index = (pos.y * self.width() + pos.x) as usize;
         &self.cells[index]
     }
 
     pub fn at_mut(&mut self, pos: Pos) -> &mut Cell {
+        debug_assert!(self.in_bounds(pos));
         let index = (pos.y * self.width() + pos.x) as usize;
         &mut self.cells[index]
     }
@@ -127,5 +129,26 @@ impl Grid {
 
     pub fn height(&self) -> i32 {
         self.h
+    }
+
+    pub fn find_unit(&self, id: u64) -> Option<Pos> {
+        for x in 0..self.width() {
+            for y in 0..self.height() {
+                let pos = Pos::new(x, y);
+                if self.at(pos).units().iter().any(|u| u.id() == id) {
+                    return Some(pos);
+                }
+            }
+        }
+        None
+    }
+
+    pub fn move_unit(&mut self, id: u64, from: Pos, to: Pos) {
+        let units = self
+            .at_mut(from)
+            .units_mut()
+            .extract_if(.., |u| u.id() == id)
+            .collect::<Vec<Unit>>();
+        self.at_mut(to).units_mut().extend(units);
     }
 }

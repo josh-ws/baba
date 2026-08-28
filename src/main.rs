@@ -1,15 +1,18 @@
-use crate::{lex::lex, rule::parse, world::Grid};
+use crate::{
+    eval::Turn,
+    world::{Direction, Grid},
+};
 
 mod ascii;
+mod eval;
 mod lex;
 mod rule;
 mod unit;
 mod world;
 
 fn main() {
-    let grid = Grid::from_ascii("BA IS YO BA IS KE");
-    println!("'{}'\n============", grid.to_ascii());
-    for (i, rule) in parse(&lex(&grid)).iter().enumerate() {
-        println!("{} | {}", i + 1, rule.to_ascii());
-    }
+    let mut grid = Grid::from_ascii("BA IS YO .. .. ba .. ..");
+    let mut new_turn = Turn::new(&mut grid, Direction::East);
+    new_turn.run();
+    println!("{}", grid.to_ascii());
 }

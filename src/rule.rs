@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::{
     lex::Run,
     unit::{Noun, Operator, Property, Text},
@@ -7,6 +9,34 @@ use crate::{
 pub enum Complement {
     Transformation(Noun),
     Property(Property),
+}
+
+pub struct Rules(Vec<Rule>);
+
+impl Rules {
+    pub fn new() -> Rules {
+        Rules(Vec::new())
+    }
+
+    pub fn add(&mut self, rule: Rule) {
+        self.0.push(rule);
+    }
+
+    pub fn has(&self, noun: Noun, property: Property) -> bool {
+        self.iter().any(|r| {
+            r.subject == noun
+                && r.operator == Operator::Is
+                && r.complement == Complement::Property(property)
+        })
+    }
+}
+
+impl Deref for Rules {
+    type Target = [Rule];
+
+    fn deref(&self) -> &[Rule] {
+        &self.0
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -34,12 +64,12 @@ impl Rule {
     }
 }
 
-pub fn parse(runs: &[Run]) -> Vec<Rule> {
-    let mut rules = Vec::new();
+pub fn parse(runs: &[Run]) -> Rules {
+    let mut rules = Rules::new();
     for run in runs {
         for window in run.words().windows(3) {
             if let Some(rule) = parse_rule(window) {
-                rules.push(rule);
+                rules.add(rule);
             }
         }
     }

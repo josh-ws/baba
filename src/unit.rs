@@ -2,6 +2,7 @@
 pub enum Noun {
     Baba,
     Keke,
+    Text,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -38,7 +39,18 @@ impl Unit {
         Self { id, kind }
     }
 
+    pub fn id(&self) -> u64 {
+        self.id
+    }
+
     pub fn kind(&self) -> UnitKind {
         self.kind
+    }
+
+    pub fn noun(&self) -> Noun {
+        match self.kind() {
+            UnitKind::Object(noun) => noun,
+            UnitKind::Text(_) => Noun::Text,
+        }
     }
 }
