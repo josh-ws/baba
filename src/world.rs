@@ -1,4 +1,5 @@
-enum Direction {
+#[derive(Clone, Copy)]
+pub enum Direction {
     North,
     South,
     East,
@@ -16,12 +17,18 @@ impl Direction {
     }
 }
 
-struct Pos {
-    x: i32,
-    y: i32,
+#[derive(Clone, Copy, Debug)]
+pub struct Pos {
+    pub x: i32,
+    pub y: i32,
 }
 
 impl Pos {
+    pub fn new(x: i32, y: i32) -> Self {
+        Self { x, y }
+    }
+
+    #[must_use]
     pub fn shift(self, dir: Direction) -> Self {
         let step = dir.as_step();
         Self {

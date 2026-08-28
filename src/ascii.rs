@@ -1,4 +1,4 @@
-use crate::{Cell, Grid, Noun, Operator, Property, Text, Unit, UnitKind};
+use crate::{Cell, Grid, Noun, Operator, Property, Text, Unit, UnitKind, lex::Run};
 
 const CODES: &[(&str, UnitKind)] = &[
     ("ba", UnitKind::Object(Noun::Baba)),
@@ -58,6 +58,17 @@ impl Grid {
             .iter()
             .map(|cell| cell.to_ascii())
             .collect::<Vec<&str>>()
+            .join(" ")
+    }
+}
+
+impl Run {
+    pub fn to_ascii(&self) -> String {
+        self.words()
+            .iter()
+            .map(|f| UnitKind::Text(f.clone()))
+            .map(|f| f.to_ascii().to_string())
+            .collect::<Vec<String>>()
             .join(" ")
     }
 }
