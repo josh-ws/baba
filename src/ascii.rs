@@ -18,6 +18,7 @@ const CODES: &[(&str, UnitKind)] = &[
     ("YO", UnitKind::Text(Text::Property(Property::You))),
     ("ST", UnitKind::Text(Text::Property(Property::Stop))),
     ("PU", UnitKind::Text(Text::Property(Property::Push))),
+    ("WI", UnitKind::Text(Text::Property(Property::Win))),
 ];
 
 impl UnitKind {

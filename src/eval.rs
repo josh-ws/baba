@@ -5,8 +5,10 @@ use crate::{
     world::{Cell, Direction, Grid, Pos},
 };
 
-pub enum Result {
+#[derive(Debug, PartialEq)]
+pub enum TurnResult {
     Continue,
+    Win,
 }
 
 pub struct Turn<'a> {
@@ -17,10 +19,14 @@ pub struct Turn<'a> {
 
 impl<'a> Turn<'a> {
     pub fn new(grid: &'a mut Grid, input: Direction) -> Self {
-        Self { grid, input, rules: Rules::new() }
+        Self {
+            grid,
+            input,
+            rules: Rules::new(),
+        }
     }
 
-    pub fn run(&mut self) -> Result {
+    pub fn run(&mut self) -> TurnResult {
         self.reparse();
         self.move_you();
         self.reparse();
@@ -29,12 +35,12 @@ impl<'a> Turn<'a> {
         self.check_status()
     }
 
-    pub fn grid(&mut self) -> &mut Grid {
-        self.grid
-    }
-
-    fn check_status(&self) -> Result {
-        Result::Continue
+    fn check_status(&self) -> TurnResult {
+        if any_cell_has(self.grid, &self.rules, &[Property::Win, Property::You]) {
+            TurnResult::Win
+        } else {
+            TurnResult::Continue
+        }
     }
 
     fn reparse(&mut self) {
@@ -55,11 +61,23 @@ impl<'a> Turn<'a> {
 
 // returns all noun units with specified property
 fn query_prop(grid: &Grid, rules: &Rules, prop: Property) -> Vec<u64> {
-    grid.cells().iter().flat_map(Cell::units).filter(|u| rules.has(u.noun(), prop)).map(|u| u.id()).collect::<Vec<u64>>()
+    grid.cells()
+        .iter()
+        .flat_map(Cell::units)
+        .filter(|u| rules.has(u.noun(), prop))
+        .map(|u| u.id())
+        .collect::<Vec<u64>>()
 }
 
 fn cell_has(cell: &Cell, rules: &Rules, prop: Property) -> bool {
     cell.units().iter().any(|u| rules.has(u.noun(), prop))
+}
+
+// check whether the grid has any cell that satisfies all props in `props`
+fn any_cell_has(grid: &Grid, rules: &Rules, props: &[Property]) -> bool {
+    grid.cells()
+        .iter()
+        .any(|c| props.iter().all(|p| cell_has(c, rules, *p)))
 }
 
 fn push(grid: &mut Grid, rules: &Rules, mover: u64, from: Pos, dir: Direction) -> bool {
@@ -81,7 +99,11 @@ fn push(grid: &mut Grid, rules: &Rules, mover: u64, from: Pos, dir: Direction) -
 
 // move all units on `from` to `to` if they have the specified property
 fn move_with_prop(grid: &mut Grid, rules: &Rules, from: Pos, to: Pos, prop: Property) {
-    let units = grid.at_mut(from).units_mut().extract_if(.., |u| rules.has(u.noun(), prop)).collect::<Vec<Unit>>();
+    let units = grid
+        .at_mut(from)
+        .units_mut()
+        .extract_if(.., |u| rules.has(u.noun(), prop))
+        .collect::<Vec<Unit>>();
     grid.at_mut(to).units_mut().extend(units);
 }
 
@@ -108,7 +130,7 @@ fn movement_stack(grid: &Grid, rules: &Rules, from: Pos, dir: Direction) -> Opti
 #[cfg(test)]
 mod tests {
     use crate::{
-        eval::Turn,
+        eval::{Turn, TurnResult},
         world::{Direction, Grid},
     };
 
@@ -119,17 +141,36 @@ mod tests {
         assert_eq!(after, grid.to_ascii());
     }
 
+    #[track_caller]
+    fn assert_result(src: &str, dir: Direction, expected: TurnResult) {
+        let mut grid = Grid::from_ascii(src);
+        let result = Turn::new(&mut grid, dir).run();
+        assert_eq!(result, expected);
+    }
+
     #[test]
     fn basic_you_movement() {
         assert_move_result("BA IS YO ba .. ..", "BA IS YO .. ba ..", Direction::East);
         assert_move_result("BA IS YO .. ba ..", "BA IS YO ba .. ..", Direction::West);
-        assert_move_result("BA IS YO ba\n.. .. .. ..", "BA IS YO ..\n.. .. .. ba", Direction::South);
-        assert_move_result("BA IS YO ..\n.. .. .. ba", "BA IS YO ba\n.. .. .. ..", Direction::North);
+        assert_move_result(
+            "BA IS YO ba\n.. .. .. ..",
+            "BA IS YO ..\n.. .. .. ba",
+            Direction::South,
+        );
+        assert_move_result(
+            "BA IS YO ..\n.. .. .. ba",
+            "BA IS YO ba\n.. .. .. ..",
+            Direction::North,
+        );
     }
 
     #[test]
     fn you_multi_move() {
-        assert_move_result("BA IS YO ba ba ba .. ..", "BA IS YO .. ba ba ba ..", Direction::East);
+        assert_move_result(
+            "BA IS YO ba ba ba .. ..",
+            "BA IS YO .. ba ba ba ..",
+            Direction::East,
+        );
     }
 
     #[test]
@@ -142,29 +183,71 @@ mod tests {
 
     #[test]
     fn you_blocked_by_stop() {
-        assert_move_result("BA IS YO .. ba wa .. WA IS ST", "BA IS YO .. ba wa .. WA IS ST", Direction::East);
+        assert_move_result(
+            "BA IS YO .. ba wa .. WA IS ST",
+            "BA IS YO .. ba wa .. WA IS ST",
+            Direction::East,
+        );
     }
     #[test]
     fn basic_push() {
-        assert_move_result("BA IS YO RO IS PU .. ba ro ..", "BA IS YO RO IS PU .. .. ba ro", Direction::East);
-        assert_move_result("BA IS YO RO IS PU .. ro ba ..", "BA IS YO RO IS PU ro ba .. ..", Direction::West);
-        assert_move_result("BA IS YO ..\nRO IS PU ro\n.. .. .. ba", "BA IS YO ro\nRO IS PU ba\n.. .. .. ..", Direction::North);
-        assert_move_result("BA IS YO ba\nRO IS PU ro\n.. .. .. ..", "BA IS YO ..\nRO IS PU ba\n.. .. .. ro", Direction::South);
+        assert_move_result(
+            "BA IS YO RO IS PU .. ba ro ..",
+            "BA IS YO RO IS PU .. .. ba ro",
+            Direction::East,
+        );
+        assert_move_result(
+            "BA IS YO RO IS PU .. ro ba ..",
+            "BA IS YO RO IS PU ro ba .. ..",
+            Direction::West,
+        );
+        assert_move_result(
+            "BA IS YO ..\nRO IS PU ro\n.. .. .. ba",
+            "BA IS YO ro\nRO IS PU ba\n.. .. .. ..",
+            Direction::North,
+        );
+        assert_move_result(
+            "BA IS YO ba\nRO IS PU ro\n.. .. .. ..",
+            "BA IS YO ..\nRO IS PU ba\n.. .. .. ro",
+            Direction::South,
+        );
     }
 
     #[test]
     fn push_chain() {
-        assert_move_result("BA IS YO RO IS PU ba ro ro .. ro ..", "BA IS YO RO IS PU .. ba ro ro ro ..", Direction::East);
+        assert_move_result(
+            "BA IS YO RO IS PU ba ro ro .. ro ..",
+            "BA IS YO RO IS PU .. ba ro ro ro ..",
+            Direction::East,
+        );
     }
 
     #[test]
     #[ignore = "YOU chain needs to keep track of pushed"]
     fn you_push_chain() {
-        assert_move_result("BA IS YO BA IS PU ba ba .. ..", "BA IS YO BA IS PU .. ba ba ..", Direction::East);
+        assert_move_result(
+            "BA IS YO BA IS PU ba ba .. ..",
+            "BA IS YO BA IS PU .. ba ba ..",
+            Direction::East,
+        );
     }
 
     #[test]
     fn push_blocked_by_stop() {
-        assert_move_result("BA IS YO RO IS PU WA IS ST ba ro wa", "BA IS YO RO IS PU WA IS ST ba ro wa", Direction::East);
+        assert_move_result(
+            "BA IS YO RO IS PU WA IS ST ba ro wa",
+            "BA IS YO RO IS PU WA IS ST ba ro wa",
+            Direction::East,
+        );
+    }
+
+    #[test]
+    fn win_standing_on_win_tile() {
+        assert_result("BA IS YO RO IS WI ba ro", Direction::East, TurnResult::Win);
+    }
+
+    #[test]
+    fn win_when_you_is_win() {
+        assert_result("BA IS YO BA IS WI ba", Direction::East, TurnResult::Win);
     }
 }

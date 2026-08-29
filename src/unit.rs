@@ -17,6 +17,7 @@ pub enum Property {
     You,
     Stop,
     Push,
+    Win,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
