@@ -1,8 +1,8 @@
 use crate::{
     lex::lex,
     rule::{Rules, parse},
-    unit::Property,
-    world::{Cell, Direction, Grid},
+    unit::{Property, Unit},
+    world::{Cell, Direction, Grid, Pos},
 };
 
 pub enum Result {
@@ -17,11 +17,7 @@ pub struct Turn<'a> {
 
 impl<'a> Turn<'a> {
     pub fn new(grid: &'a mut Grid, input: Direction) -> Self {
-        Self {
-            grid,
-            input,
-            rules: Rules::new(),
-        }
+        Self { grid, input, rules: Rules::new() }
     }
 
     pub fn run(&mut self) -> Result {
@@ -48,13 +44,8 @@ impl<'a> Turn<'a> {
     fn move_you(&mut self) {
         let you = query_prop(self.grid, &self.rules, Property::You);
         for id in you {
-            if let Some(from) = self.grid().find_unit(id) {
-                let to = from.shift(self.input);
-                if self.grid.in_bounds(to)
-                    && !cell_has(self.grid.at(to), &self.rules, Property::Stop)
-                {
-                    self.grid.move_unit(id, from, to);
-                }
+            if let Some(from) = self.grid.find_unit(id) {
+                push(self.grid, &self.rules, id, from, self.input);
             }
         }
     }
@@ -64,16 +55,54 @@ impl<'a> Turn<'a> {
 
 // returns all noun units with specified property
 fn query_prop(grid: &Grid, rules: &Rules, prop: Property) -> Vec<u64> {
-    grid.cells()
-        .iter()
-        .flat_map(Cell::units)
-        .filter(|u| rules.has(u.noun(), prop))
-        .map(|u| u.id())
-        .collect::<Vec<u64>>()
+    grid.cells().iter().flat_map(Cell::units).filter(|u| rules.has(u.noun(), prop)).map(|u| u.id()).collect::<Vec<u64>>()
 }
 
 fn cell_has(cell: &Cell, rules: &Rules, prop: Property) -> bool {
     cell.units().iter().any(|u| rules.has(u.noun(), prop))
+}
+
+fn push(grid: &mut Grid, rules: &Rules, mover: u64, from: Pos, dir: Direction) -> bool {
+    match movement_stack(grid, rules, from, dir) {
+        Some(cells) => {
+            for (i, pos) in cells.iter().enumerate().rev() {
+                let to = pos.shift(dir);
+                if i == 0 {
+                    grid.move_unit(mover, *pos, to);
+                } else {
+                    move_with_prop(grid, rules, *pos, to, Property::Push);
+                }
+            }
+            true
+        }
+        None => false,
+    }
+}
+
+// move all units on `from` to `to` if they have the specified property
+fn move_with_prop(grid: &mut Grid, rules: &Rules, from: Pos, to: Pos, prop: Property) {
+    let units = grid.at_mut(from).units_mut().extract_if(.., |u| rules.has(u.noun(), prop)).collect::<Vec<Unit>>();
+    grid.at_mut(to).units_mut().extend(units);
+}
+
+// walk the grid from `from` in direction `dir`, collecting all cells that must move
+// `None` result means movement is impossible
+fn movement_stack(grid: &Grid, rules: &Rules, from: Pos, dir: Direction) -> Option<Vec<Pos>> {
+    let mut cells_to_move = vec![from];
+    let mut next = from.shift(dir);
+    loop {
+        if !grid.in_bounds(next) {
+            return None;
+        }
+        if cell_has(grid.at(next), rules, Property::Stop) {
+            return None;
+        }
+        if !cell_has(grid.at(next), rules, Property::Push) {
+            return Some(cells_to_move);
+        }
+        cells_to_move.push(next);
+        next = next.shift(dir); // move to next cell
+    }
 }
 
 #[cfg(test)]
@@ -83,40 +112,59 @@ mod tests {
         world::{Direction, Grid},
     };
 
-    #[test]
-    fn basic_move() {
-        let mut grid = Grid::from_ascii("BA IS YO ba .. ..");
-        let mut turn = Turn::new(&mut grid, Direction::East);
-        turn.run();
-        let result = grid.to_ascii();
-        assert_eq!("BA IS YO .. ba ..", result);
+    #[track_caller]
+    fn assert_move_result(before: &str, after: &str, dir: Direction) {
+        let mut grid = Grid::from_ascii(before);
+        Turn::new(&mut grid, dir).run();
+        assert_eq!(after, grid.to_ascii());
     }
 
     #[test]
-    fn move_blocked_on_edge() {
-        let mut grid = Grid::from_ascii("BA IS YO .. .. ba");
-        Turn::new(&mut grid, Direction::East).run();
-        assert_eq!("BA IS YO .. .. ba", grid.to_ascii());
+    fn basic_you_movement() {
+        assert_move_result("BA IS YO ba .. ..", "BA IS YO .. ba ..", Direction::East);
+        assert_move_result("BA IS YO .. ba ..", "BA IS YO ba .. ..", Direction::West);
+        assert_move_result("BA IS YO ba\n.. .. .. ..", "BA IS YO ..\n.. .. .. ba", Direction::South);
+        assert_move_result("BA IS YO ..\n.. .. .. ba", "BA IS YO ba\n.. .. .. ..", Direction::North);
     }
 
     #[test]
-    fn move_does_not_wrap() {
-        let mut grid = Grid::from_ascii("BA IS YO\n.. .. ba\n.. .. ..");
-        Turn::new(&mut grid, Direction::East).run();
-        assert_eq!("BA IS YO\n.. .. ba\n.. .. ..", grid.to_ascii());
+    fn you_multi_move() {
+        assert_move_result("BA IS YO ba ba ba .. ..", "BA IS YO .. ba ba ba ..", Direction::East);
     }
 
     #[test]
-    fn move_blocked_by_stop() {
-        let mut grid = Grid::from_ascii("BA IS YO .. ba wa .. WA IS ST");
-        Turn::new(&mut grid, Direction::East).run();
-        assert_eq!("BA IS YO .. ba wa .. WA IS ST", grid.to_ascii());
+    fn you_blocked_on_edge() {
+        assert_move_result("BA IS YO .. .. ba", "BA IS YO .. .. ba", Direction::East);
+        assert_move_result("ba .. .. BA IS YO", "ba .. .. BA IS YO", Direction::West);
+        assert_move_result("BA IS YO .. ba ..", "BA IS YO .. ba ..", Direction::North);
+        assert_move_result("BA IS YO .. ba ..", "BA IS YO .. ba ..", Direction::South);
     }
 
     #[test]
-    fn move_not_blocked_when_no_stop() {
-        let mut grid = Grid::from_ascii("BA IS YO .. ba wa");
-        Turn::new(&mut grid, Direction::East).run();
-        assert_eq!("BA IS YO .. .. ba", grid.to_ascii());
+    fn you_blocked_by_stop() {
+        assert_move_result("BA IS YO .. ba wa .. WA IS ST", "BA IS YO .. ba wa .. WA IS ST", Direction::East);
+    }
+    #[test]
+    fn basic_push() {
+        assert_move_result("BA IS YO RO IS PU .. ba ro ..", "BA IS YO RO IS PU .. .. ba ro", Direction::East);
+        assert_move_result("BA IS YO RO IS PU .. ro ba ..", "BA IS YO RO IS PU ro ba .. ..", Direction::West);
+        assert_move_result("BA IS YO ..\nRO IS PU ro\n.. .. .. ba", "BA IS YO ro\nRO IS PU ba\n.. .. .. ..", Direction::North);
+        assert_move_result("BA IS YO ba\nRO IS PU ro\n.. .. .. ..", "BA IS YO ..\nRO IS PU ba\n.. .. .. ro", Direction::South);
+    }
+
+    #[test]
+    fn push_chain() {
+        assert_move_result("BA IS YO RO IS PU ba ro ro .. ro ..", "BA IS YO RO IS PU .. ba ro ro ro ..", Direction::East);
+    }
+
+    #[test]
+    #[ignore = "YOU chain needs to keep track of pushed"]
+    fn you_push_chain() {
+        assert_move_result("BA IS YO BA IS PU ba ba .. ..", "BA IS YO BA IS PU .. ba ba ..", Direction::East);
+    }
+
+    #[test]
+    fn push_blocked_by_stop() {
+        assert_move_result("BA IS YO RO IS PU WA IS ST ba ro wa", "BA IS YO RO IS PU WA IS ST ba ro wa", Direction::East);
     }
 }

@@ -13,6 +13,12 @@ pub enum Complement {
 
 pub struct Rules(Vec<Rule>);
 
+const INHERENT: &[Rule] = &[Rule {
+    subject: Noun::Text,
+    operator: Operator::Is,
+    complement: Complement::Property(Property::Push),
+}];
+
 impl Rules {
     pub fn new() -> Rules {
         Rules(Vec::new())
@@ -23,7 +29,7 @@ impl Rules {
     }
 
     pub fn has(&self, noun: Noun, property: Property) -> bool {
-        self.iter().any(|r| {
+        self.iter().chain(INHERENT).any(|r| {
             r.subject == noun
                 && r.operator == Operator::Is
                 && r.complement == Complement::Property(property)

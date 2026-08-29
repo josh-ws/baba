@@ -9,12 +9,15 @@ const CODES: &[(&str, UnitKind)] = &[
     ("ba", UnitKind::Object(Noun::Baba)),
     ("ke", UnitKind::Object(Noun::Keke)),
     ("wa", UnitKind::Object(Noun::Wall)),
+    ("ro", UnitKind::Object(Noun::Rock)),
     ("BA", UnitKind::Text(Text::Noun(Noun::Baba))),
     ("KE", UnitKind::Text(Text::Noun(Noun::Keke))),
     ("WA", UnitKind::Text(Text::Noun(Noun::Wall))),
+    ("RO", UnitKind::Text(Text::Noun(Noun::Rock))),
     ("IS", UnitKind::Text(Text::Operator(Operator::Is))),
     ("YO", UnitKind::Text(Text::Property(Property::You))),
     ("ST", UnitKind::Text(Text::Property(Property::Stop))),
+    ("PU", UnitKind::Text(Text::Property(Property::Push))),
 ];
 
 impl UnitKind {
