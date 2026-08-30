@@ -1,4 +1,4 @@
-use crate::unit::{Property, Text, Unit, UnitKind};
+use crate::unit::{Noun, Property, Text, Unit, UnitKind};
 
 #[derive(Clone, Copy)]
 pub enum Direction {
@@ -131,6 +131,20 @@ impl Grid {
         self.h
     }
 
+    fn pos_of(&self, i: usize) -> Pos {
+        Pos::new(i as i32 % self.w, i as i32 / self.w)
+    }
+
+    pub fn units(&self) -> Vec<(Pos, &Unit)> {
+        let mut result = Vec::new();
+        for (i, cell) in self.cells().iter().enumerate() {
+            for unit in cell.units() {
+                result.push((self.pos_of(i), unit));
+            }
+        }
+        result
+    }
+
     pub fn find_unit(&self, id: u64) -> Option<Pos> {
         for x in 0..self.width() {
             for y in 0..self.height() {
@@ -150,5 +164,13 @@ impl Grid {
             .extract_if(.., |u| u.id() == id)
             .collect::<Vec<Unit>>();
         self.at_mut(to).units_mut().extend(units);
+    }
+
+    pub fn transform_unit(&mut self, id: u64, pos: Pos, into: Noun) {
+        let Some(i) = self.at(pos).units().iter().position(|u| u.id() == id) else {
+            return;
+        };
+        let new_id = self.next();
+        self.at_mut(pos).units_mut()[i] = Unit::new(new_id, UnitKind::Object(into));
     }
 }

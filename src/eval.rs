@@ -1,7 +1,7 @@
 use crate::{
     lex::lex,
-    rule::{Rules, parse},
-    unit::{Property, Unit},
+    rule::{Complement, Rules, parse},
+    unit::{Noun, Operator, Property, Unit},
     world::{Cell, Direction, Grid, Pos},
 };
 
@@ -9,6 +9,18 @@ use crate::{
 pub enum TurnResult {
     Continue,
     Win,
+}
+
+struct Transformation {
+    unit_id: u64,
+    pos: Pos,
+    into: Noun,
+}
+
+impl Transformation {
+    fn new(unit_id: u64, pos: Pos, into: Noun) -> Self {
+        Transformation { unit_id, pos, into }
+    }
 }
 
 pub struct Turn<'a> {
@@ -56,7 +68,38 @@ impl<'a> Turn<'a> {
         }
     }
 
-    fn handle_transforms(&mut self) {}
+    fn handle_transforms(&mut self) {
+        for t in query_transforms(self.grid, &self.rules) {
+            self.grid.transform_unit(t.unit_id, t.pos, t.into);
+        }
+    }
+}
+
+fn query_transforms(grid: &Grid, rules: &Rules) -> Vec<Transformation> {
+    let mut result = Vec::new();
+    for (pos, unit) in grid.units() {
+        match transforming_into(rules, unit.noun()) {
+            Some(target) => result.push(Transformation::new(unit.id(), pos, target)),
+            None => (),
+        };
+    }
+    result
+}
+
+fn transforming_into(rules: &Rules, noun: Noun) -> Option<Noun> {
+    rules
+        .iter()
+        .filter_map(|rule| match rule.complement {
+            Complement::Transformation(t) if t != noun => {
+                if rule.subject == noun && rule.operator == Operator::Is {
+                    Some(t)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
+        .next() // TODO(jw) explicitly returning the first transformation here, we should handle all of them
 }
 
 // returns all noun units with specified property
@@ -259,5 +302,20 @@ mod tests {
     #[test]
     fn grid_is_reevaluated_after_pushing_words() {
         assert_result("BA IS YO ba BA .. IS WI", Direction::East, TurnResult::Win);
+    }
+
+    #[test]
+    fn transform() {
+        assert_move_result("BA IS KE ba", "BA IS KE ke", Direction::East);
+        assert_move_result(
+            "BA IS KE IS BA ba ke",
+            "BA IS KE IS BA ke ba",
+            Direction::East,
+        );
+    }
+
+    #[test]
+    fn transform_no_loopback() {
+        assert_move_result("BA IS KE IS BA ba", "BA IS KE IS BA ke", Direction::East);
     }
 }
