@@ -250,4 +250,14 @@ mod tests {
     fn win_when_you_is_win() {
         assert_result("BA IS YO BA IS WI ba", Direction::East, TurnResult::Win);
     }
+
+    #[test]
+    fn text_is_pushable() {
+        assert_move_result("BA IS YO ba BA ..", "BA IS YO .. ba BA", Direction::East);
+    }
+
+    #[test]
+    fn grid_is_reevaluated_after_pushing_words() {
+        assert_result("BA IS YO ba BA .. IS WI", Direction::East, TurnResult::Win);
+    }
 }

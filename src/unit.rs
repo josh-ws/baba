@@ -5,6 +5,7 @@ pub enum Noun {
     Text,
     Wall,
     Rock,
+    Flag,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
