@@ -87,10 +87,10 @@ fn query_transforms(grid: &Grid, rules: &Rules) -> Vec<Transformation> {
 }
 
 fn transforming_into(rules: &Rules, noun: Noun) -> Option<Noun> {
-    rules
+    let targets = rules
         .iter()
         .filter_map(|rule| match rule.complement {
-            Complement::Transformation(t) if t != noun => {
+            Complement::Transformation(t) => {
                 if rule.subject == noun && rule.operator == Operator::Is {
                     Some(t)
                 } else {
@@ -99,7 +99,12 @@ fn transforming_into(rules: &Rules, noun: Noun) -> Option<Noun> {
             }
             _ => None,
         })
-        .next() // TODO(jw) explicitly returning the first transformation here, we should handle all of them
+        .collect::<Vec<Noun>>();
+
+    if targets.contains(&noun) {
+        return None;
+    }
+    targets.first().copied() // TODO(jw) explicitly returning the first transformation here, we should handle all of them
 }
 
 // returns all noun units with specified property
@@ -317,5 +322,14 @@ mod tests {
     #[test]
     fn transform_no_loopback() {
         assert_move_result("BA IS KE IS BA ba", "BA IS KE IS BA ke", Direction::East);
+    }
+
+    #[test]
+    fn transform_x_is_x() {
+        assert_move_result(
+            "BA IS KE BA IS BA ba",
+            "BA IS KE BA IS BA ba",
+            Direction::East,
+        );
     }
 }
