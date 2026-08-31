@@ -52,24 +52,6 @@ pub struct Rule {
     pub complement: Complement,
 }
 
-impl Rule {
-    pub fn new(subject: Noun, operator: Operator, complement: Complement) -> Self {
-        Self {
-            subject,
-            operator,
-            complement,
-        }
-    }
-
-    pub fn from_transformation(target: Noun, transform_to: Noun) -> Self {
-        Self {
-            subject: target,
-            operator: Operator::Is,
-            complement: Complement::Transformation(transform_to),
-        }
-    }
-}
-
 pub fn parse(runs: &[Run]) -> Rules {
     let mut rules = Rules::new();
     for run in runs {

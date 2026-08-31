@@ -21,6 +21,10 @@ impl Default for Level {
 }
 
 impl Level {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     pub fn grid(&self) -> &Grid {
         &self.grid
     }

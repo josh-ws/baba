@@ -1,4 +1,4 @@
-use crate::unit::{Noun, Property, Text, Unit, UnitKind};
+use crate::unit::{Noun, Text, Unit, UnitKind};
 
 #[derive(Clone, Copy)]
 pub enum Direction {

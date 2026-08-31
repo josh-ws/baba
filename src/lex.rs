@@ -1,7 +1,6 @@
 use crate::{
-    Grid,
     unit::Text,
-    world::{Direction, Pos},
+    world::{Direction, Grid, Pos},
 };
 
 const MIN_RULE_LENGTH: usize = 3;
@@ -55,6 +54,8 @@ pub fn lex(grid: &Grid) -> Vec<Run> {
 
 #[cfg(test)]
 mod tests {
+    use crate::world::Grid;
+
     use super::*;
 
     #[track_caller]

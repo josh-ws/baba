@@ -1,12 +1,13 @@
 Key = demo
 Name = Demo Level
 Data =
-BA IS YO .. RO IS PU
 .. .. .. .. .. .. ..
-wa wa wa wa wa .. ..
-ba .. .. .. wa .. fl
-WA IS ST .. wa .. ..
-.. .. .. .. wa .. ..
-wa wa wa wa wa .. ..
+.. .. .. BA .. .. ..
+.. .. RO IS PU .. ..
+.. .. IS YO .. .. ..
+.. .. WI .. .. .. ..
 .. .. .. .. .. .. ..
-FL IS WI .. .. .. ..
+.. .. ba .. ro .. ..
+.. .. .. .. .. .. ..
+wa wa wa wa wa wa wa
+WA IS ST .. .. .. ..
