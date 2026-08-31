@@ -1,12 +1,14 @@
 use std::io::{self, BufRead, Write, stdout};
 
 use crate::{
-    eval::{Turn, TurnResult},
+    eval::TurnResult,
+    level::Level,
     world::{Direction, Grid},
 };
 
 mod ascii;
 mod eval;
+mod level;
 mod lex;
 mod rule;
 mod unit;
@@ -39,33 +41,28 @@ fn read_key() -> Option<char> {
     }
 }
 
+fn clear() {
+    print!("\x1B[2J\x1B[1;1H");
+}
+
 fn main() {
-    let mut grid = Grid::from_ascii(
-        "
-        BA IS YO .. RO IS PU
-        .. .. .. .. .. .. ..
-        wa wa wa wa wa .. ..
-        ba .. .. .. wa .. fl
-        WA IS ST .. wa .. ..
-        .. .. .. .. wa .. ..
-        wa wa wa wa wa .. ..
-        .. .. .. .. .. .. ..
-        FL IS WI .. .. .. ..",
-    );
-    println!("{}", grid.to_ascii());
+    let data = include_str!("../assets/levels/demo.txt");
+    let mut level = Level::read(data);
+    clear();
+    println!("{}", level.grid().to_ascii());
     'foo: loop {
         match match_direction(read_key()) {
-            Some(dir) => {
-                let result = Turn::new(&mut grid, dir).run();
-                println!("{}", grid.to_ascii());
-                if result == TurnResult::Win {
+            Some(dir) => match level.update(dir) {
+                TurnResult::Win => {
                     println!("You win!");
                     break 'foo;
                 }
-            }
-            None => {
-                break 'foo;
-            }
+                TurnResult::Continue => {
+                    clear();
+                    println!("{}", level.grid().to_ascii());
+                }
+            },
+            None => break 'foo,
         }
     }
 }
