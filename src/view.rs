@@ -12,7 +12,10 @@ use crate::{
     eval::TurnResult,
     level::Level,
     unit::{Noun, Operator, Property, Text, UnitKind},
-    world::{Direction, Pos},
+    world::{
+        Direction::{self, East},
+        Pos,
+    },
 };
 
 const TILE_SIZE: f32 = 24.0;
@@ -47,6 +50,18 @@ fn text_index(text: Text) -> Option<usize> {
     TEXT.iter().position(|n| *n == text)
 }
 
+fn direction_index(direction: Direction) -> usize {
+    match direction {
+        Direction::East | Direction::West => 0,
+        Direction::South => 1,
+        Direction::North => 2,
+    }
+}
+
+fn do_flip_sprite(direction: Direction) -> bool {
+    direction == Direction::West
+}
+
 pub struct Viewer {
     level: Level,
     status: TurnResult,
@@ -64,17 +79,22 @@ impl Viewer {
         }
     }
 
-    fn draw_tile(&self, t: &Texture2D, index: usize, pos: Pos) {
+    fn draw_tile(&self, t: &Texture2D, index: usize, pos: Pos, dir: Option<Direction>) {
+        let actual_dir = dir.or(Some(Direction::East)).unwrap();
+        let dir_index = direction_index(actual_dir);
+        let flip_x = do_flip_sprite(actual_dir);
         let params = DrawTextureParams {
             source: Some(Rect {
-                x: 0.,
+                x: dir_index as f32 * TILE_SIZE,
                 y: index as f32 * TILE_SIZE,
                 w: TILE_SIZE,
                 h: TILE_SIZE,
             }),
             dest_size: Some(Vec2::new(DEST_TILE_SIZE, DEST_TILE_SIZE)),
+            flip_x,
             ..Default::default()
         };
+
         draw_texture_ex(
             t,
             pos.x as f32 * DEST_TILE_SIZE,
@@ -115,12 +135,12 @@ impl Viewer {
             match unit.kind() {
                 UnitKind::Object(noun) => {
                     if let Some(src) = noun_index(noun) {
-                        self.draw_tile(&self.sprites, src, pos);
+                        self.draw_tile(&self.sprites, src, pos, Some(unit.direction()));
                     }
                 }
                 UnitKind::Text(text) => {
                     if let Some(src) = text_index(text) {
-                        self.draw_tile(&self.words, src, pos);
+                        self.draw_tile(&self.words, src, pos, None);
                     }
                 }
             }

@@ -1,3 +1,5 @@
+use crate::world::Direction;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Noun {
     Baba,
@@ -38,11 +40,16 @@ pub enum UnitKind {
 pub struct Unit {
     id: u64,
     kind: UnitKind,
+    direction: Direction,
 }
 
 impl Unit {
     pub fn new(id: u64, kind: UnitKind) -> Self {
-        Self { id, kind }
+        Self {
+            id,
+            kind,
+            direction: Direction::East,
+        }
     }
 
     pub fn id(&self) -> u64 {
@@ -51,6 +58,14 @@ impl Unit {
 
     pub fn kind(&self) -> UnitKind {
         self.kind
+    }
+
+    pub fn direction(&self) -> Direction {
+        self.direction
+    }
+
+    pub fn set_direction(&mut self, dir: Direction) {
+        self.direction = dir;
     }
 
     pub fn noun(&self) -> Noun {

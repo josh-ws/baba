@@ -134,8 +134,10 @@ fn push(grid: &mut Grid, rules: &Rules, mover: u64, from: Pos, dir: Direction) -
             for (i, pos) in cells.iter().enumerate().rev() {
                 let to = pos.shift(dir);
                 if i == 0 {
+                    grid.rotate_unit(mover, *pos, dir);
                     grid.move_unit(mover, *pos, to);
                 } else {
+                    grid.rotate_unit(mover, *pos, dir);
                     move_with_prop(grid, rules, *pos, to, Property::Push);
                 }
             }

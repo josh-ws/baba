@@ -1,6 +1,6 @@
 use crate::unit::{Noun, Text, Unit, UnitKind};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Direction {
     North,
     South,
@@ -155,6 +155,17 @@ impl Grid {
             }
         }
         None
+    }
+
+    pub fn rotate_unit(&mut self, id: u64, from: Pos, direction: Direction) {
+        let units = self
+            .at_mut(from)
+            .units_mut()
+            .iter_mut()
+            .filter(|f| f.id() == id);
+        for unit in units {
+            unit.set_direction(direction);
+        }
     }
 
     pub fn move_unit(&mut self, id: u64, from: Pos, to: Pos) {
