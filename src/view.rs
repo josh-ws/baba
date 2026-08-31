@@ -64,7 +64,7 @@ impl Viewer {
         }
     }
 
-    fn draw_tile(&self, t: &Texture2D, index: usize, x: i32, y: i32) {
+    fn draw_tile(&self, t: &Texture2D, index: usize, pos: Pos) {
         let params = DrawTextureParams {
             source: Some(Rect {
                 x: 0.,
@@ -77,8 +77,8 @@ impl Viewer {
         };
         draw_texture_ex(
             t,
-            x as f32 * DEST_TILE_SIZE,
-            y as f32 * DEST_TILE_SIZE,
+            pos.x as f32 * DEST_TILE_SIZE,
+            pos.y as f32 * DEST_TILE_SIZE,
             WHITE,
             params,
         );
@@ -111,21 +111,16 @@ impl Viewer {
         clear_background(BLACK);
         draw_text(self.level.name(), 0.0, 20.0, 30.0, LIGHTGRAY);
 
-        for x in 0..self.level.grid().width() {
-            for y in 0..self.level.grid().height() {
-                let cell = self.level.grid().at(Pos::new(x, y));
-                let units = cell.units();
-                let Some(unit) = units.last() else { continue };
-                match unit.kind() {
-                    UnitKind::Object(noun) => {
-                        if let Some(src) = noun_index(noun) {
-                            self.draw_tile(&self.sprites, src, x, y);
-                        }
+        for (pos, unit) in self.level.grid().units() {
+            match unit.kind() {
+                UnitKind::Object(noun) => {
+                    if let Some(src) = noun_index(noun) {
+                        self.draw_tile(&self.sprites, src, pos);
                     }
-                    UnitKind::Text(text) => {
-                        if let Some(src) = text_index(text) {
-                            self.draw_tile(&self.words, src, x, y);
-                        }
+                }
+                UnitKind::Text(text) => {
+                    if let Some(src) = text_index(text) {
+                        self.draw_tile(&self.words, src, pos);
                     }
                 }
             }
