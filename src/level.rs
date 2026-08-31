@@ -3,11 +3,6 @@ use crate::{
     world::{Direction, Grid},
 };
 
-enum Section {
-    Header,
-    Body,
-}
-
 #[derive(Debug)]
 pub struct Level {
     key: String,
@@ -31,21 +26,16 @@ impl Level {
     }
 
     pub fn read(src: &str) -> Level {
-        let mut curr = Section::Header;
         let mut level = Level::default();
         let mut data = String::new();
         for line in src.lines() {
-            match curr {
-                Section::Header => match line.split_once("=") {
-                    Some((key, value)) => match key.trim() {
-                        "Data" => curr = Section::Body,
-                        "Key" => level.key = value.trim().to_string(),
-                        "Name" => level.name = value.trim().to_string(),
-                        _ => (),
-                    },
-                    None => continue,
+            match line.trim().split_once("=") {
+                Some((key, value)) => match key.trim() {
+                    "Key" => level.key = value.trim().to_string(),
+                    "Name" => level.name = value.trim().to_string(),
+                    _ => (),
                 },
-                Section::Body => data.push_str(&*format!("{line}\n")),
+                None => data.push_str(&*format!("{line}\n")),
             }
         }
         level.grid = Grid::from_ascii(&data);
