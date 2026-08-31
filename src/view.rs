@@ -15,7 +15,9 @@ use crate::{
     world::{Direction, Pos},
 };
 
-const TILE_SIZE: usize = 24;
+const TILE_SIZE: f32 = 24.0;
+const SCALE: f32 = 2.0;
+const DEST_TILE_SIZE: f32 = TILE_SIZE * SCALE;
 
 const NOUNS: &[Noun] = &[Noun::Baba, Noun::Flag, Noun::Rock, Noun::Wall];
 const TEXT: &[Text] = &[
@@ -63,18 +65,23 @@ impl Viewer {
     }
 
     fn draw_tile(&self, t: &Texture2D, index: usize, x: i32, y: i32) {
-        let tile_size = 48.0;
         let params = DrawTextureParams {
             source: Some(Rect {
                 x: 0.,
-                y: (index * TILE_SIZE) as f32,
-                w: TILE_SIZE as f32,
-                h: TILE_SIZE as f32,
+                y: index as f32 * TILE_SIZE,
+                w: TILE_SIZE,
+                h: TILE_SIZE,
             }),
-            dest_size: Some(Vec2::new(tile_size, tile_size)),
+            dest_size: Some(Vec2::new(DEST_TILE_SIZE, DEST_TILE_SIZE)),
             ..Default::default()
         };
-        draw_texture_ex(t, x as f32 * tile_size, y as f32 * tile_size, WHITE, params);
+        draw_texture_ex(
+            t,
+            x as f32 * DEST_TILE_SIZE,
+            y as f32 * DEST_TILE_SIZE,
+            WHITE,
+            params,
+        );
     }
 
     fn get_pressed_direction() -> Option<Direction> {
@@ -100,15 +107,15 @@ impl Viewer {
         };
     }
 
-    pub async fn draw(&self) {
+    pub fn draw(&self) {
         clear_background(BLACK);
-        draw_text(format!("{}", self.level.name()), 0.0, 20.0, 30.0, LIGHTGRAY);
+        draw_text(self.level.name(), 0.0, 20.0, 30.0, LIGHTGRAY);
 
         for x in 0..self.level.grid().width() {
             for y in 0..self.level.grid().height() {
                 let cell = self.level.grid().at(Pos::new(x, y));
                 let units = cell.units();
-                let Some(unit) = units.first() else { continue };
+                let Some(unit) = units.last() else { continue };
                 match unit.kind() {
                     UnitKind::Object(noun) => {
                         if let Some(src) = noun_index(noun) {
@@ -123,8 +130,6 @@ impl Viewer {
                 }
             }
         }
-
-        next_frame().await
     }
 }
 
@@ -133,10 +138,11 @@ pub async fn run_game(level_src: &str) {
     let mut viewer = Viewer::new(level).await;
     loop {
         viewer.update();
-        viewer.draw().await;
+        viewer.draw();
         if *viewer.status() == TurnResult::Win {
             println!("You win!");
             break;
         }
+        next_frame().await;
     }
 }

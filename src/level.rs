@@ -39,7 +39,10 @@ impl Level {
                     "Name" => level.name = value.trim().to_string(),
                     _ => (),
                 },
-                None => data.push_str(&*format!("{line}\n")),
+                None => {
+                    data.push_str(line);
+                    data.push('\n');
+                }
             }
         }
         level.grid = Grid::from_ascii(&data);

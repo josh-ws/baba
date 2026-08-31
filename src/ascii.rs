@@ -1,6 +1,6 @@
 use crate::{
     lex::Run,
-    rule::{Complement, Rule},
+    rule::Rule,
     unit::{Noun, Operator, Property, Text, Unit, UnitKind},
     world::{Cell, Grid, Pos},
 };
@@ -33,6 +33,7 @@ impl UnitKind {
         panic!("unrecognized code {s}");
     }
 
+    #[cfg(test)]
     pub fn to_ascii(self) -> &'static str {
         for (c, kind) in CODES {
             if *kind == self {
@@ -44,6 +45,7 @@ impl UnitKind {
 }
 
 impl Cell {
+    #[cfg(test)]
     pub fn to_ascii(&self) -> &'static str {
         match self.units().last() {
             Some(u) => u.kind().to_ascii(),
@@ -76,6 +78,7 @@ impl Grid {
         grid
     }
 
+    #[cfg(test)]
     pub fn to_ascii(&self) -> String {
         if self.width() == 0 {
             return String::new();
@@ -94,6 +97,7 @@ impl Grid {
 }
 
 impl Run {
+    #[cfg(test)]
     pub fn to_ascii(&self) -> String {
         self.words()
             .iter()
@@ -105,7 +109,10 @@ impl Run {
 }
 
 impl Rule {
+    #[cfg(test)]
     pub fn to_ascii(&self) -> String {
+        use crate::rule::Complement;
+
         let subject = UnitKind::Text(Text::Noun(self.subject)).to_ascii();
         let operator = UnitKind::Text(Text::Operator(self.operator)).to_ascii();
         let complement = match self.complement {
