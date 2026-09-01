@@ -5,7 +5,7 @@ use macroquad::{
     miniquad::window::set_window_size,
     shapes::draw_rectangle,
     text::draw_text,
-    texture::{DrawTextureParams, Texture2D, draw_texture_ex, load_texture},
+    texture::{DrawTextureParams, FilterMode, Texture2D, draw_texture_ex, load_texture},
     window::{clear_background, next_frame, screen_height, screen_width},
 };
 
@@ -19,6 +19,8 @@ use crate::{
     },
 };
 
+const WINDOW_WIDTH: u32 = 800;
+const WINDOW_HEIGHT: u32 = 820;
 const TILE_SIZE: f32 = 24.0;
 
 const KEYMAP: &[(KeyCode, Direction)] = &[
@@ -45,12 +47,16 @@ pub struct Viewer {
 
 impl Viewer {
     pub async fn new(level: Level) -> Self {
-        set_window_size(800, 800);
+        set_window_size(WINDOW_WIDTH, WINDOW_HEIGHT);
+        let sprites = load_texture("assets/sprites.png").await.unwrap();
+        let words = load_texture("assets/words.png").await.unwrap();
+        sprites.set_filter(FilterMode::Nearest);
+        words.set_filter(FilterMode::Nearest);
         Viewer {
             level,
             status: TurnResult::Continue,
-            sprites: load_texture("assets/sprites.png").await.unwrap(),
-            words: load_texture("assets/words.png").await.unwrap(),
+            sprites,
+            words,
         }
     }
 
@@ -93,7 +99,7 @@ impl Viewer {
         let width = screen_width() / grid.width() as f32;
         let height = screen_height() / grid.height() as f32;
         let min_size = if width < height { width } else { height };
-        min_size / TILE_SIZE
+        (min_size / TILE_SIZE).floor().max(1.0)
     }
 
     fn dest_tile_size(&self) -> f32 {
@@ -108,7 +114,8 @@ impl Viewer {
     fn origin(&self) -> Vec2 {
         let board_size = self.board_size();
         let screen_size = Vec2::new(screen_width(), screen_height());
-        (screen_size - board_size) / 2.
+        let diff = (screen_size - board_size) / 2.;
+        diff.floor()
     }
 
     fn screen_position(&self, pos: Pos) -> Vec2 {
