@@ -1,5 +1,81 @@
 use crate::world::Direction;
 
+pub enum Atlas {
+    Sprites,
+    Words,
+}
+
+pub enum Facing {
+    Directional,
+    Fixed,
+}
+
+// Sprite data for a unit
+pub struct Sprite {
+    pub atlas: Atlas,
+    pub row: usize,
+    pub facing: Facing,
+}
+
+// Static unit type data
+pub struct UnitTypeData {
+    pub kind: UnitKind,
+    pub code: &'static str,
+    pub sprite: Sprite,
+}
+
+const fn word(text: Text, code: &'static str, row: usize) -> UnitTypeData {
+    UnitTypeData {
+        kind: UnitKind::Text(text),
+        code,
+        sprite: Sprite {
+            atlas: Atlas::Words,
+            facing: Facing::Fixed,
+            row,
+        },
+    }
+}
+
+const fn object(noun: Noun, code: &'static str, row: usize, facing: Facing) -> UnitTypeData {
+    UnitTypeData {
+        kind: UnitKind::Object(noun),
+        code,
+        sprite: Sprite {
+            atlas: Atlas::Sprites,
+            facing,
+            row,
+        },
+    }
+}
+
+const UNIT_TYPES: &[UnitTypeData] = &[
+    word(Text::Noun(Noun::Baba), "BA", 0),
+    word(Text::Noun(Noun::Flag), "FL", 1),
+    word(Text::Noun(Noun::Rock), "RO", 2),
+    word(Text::Property(Property::You), "YO", 3),
+    word(Text::Property(Property::Stop), "ST", 4),
+    word(Text::Property(Property::Push), "PU", 5),
+    word(Text::Property(Property::Win), "WI", 6),
+    word(Text::Operator(Operator::Is), "IS", 7),
+    word(Text::Noun(Noun::Wall), "WA", 8),
+    object(Noun::Baba, "ba", 0, Facing::Directional),
+    object(Noun::Flag, "fl", 1, Facing::Fixed),
+    object(Noun::Rock, "ro", 2, Facing::Fixed),
+    object(Noun::Wall, "wa", 3, Facing::Fixed),
+];
+
+pub fn lookup_unit(kind: UnitKind) -> &'static UnitTypeData {
+    UNIT_TYPES
+        .iter()
+        .filter(|p| p.kind == kind)
+        .last()
+        .expect("missing unit kind")
+}
+
+pub fn search_unit(pred: impl Fn(&UnitTypeData) -> bool) -> Option<&'static UnitTypeData> {
+    UNIT_TYPES.iter().find(|d| pred(d))
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Noun {
     Baba,

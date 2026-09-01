@@ -11,9 +11,9 @@ use macroquad::{
 use crate::{
     eval::TurnResult,
     level::Level,
-    unit::{Noun, Operator, Property, Text, UnitKind},
+    unit::{Atlas, Facing, Noun, Operator, Property, Text, Unit, UnitKind, lookup_unit},
     world::{
-        Direction::{self, East},
+        Direction::{self},
         Pos,
     },
 };
@@ -22,19 +22,6 @@ const TILE_SIZE: f32 = 24.0;
 const SCALE: f32 = 2.0;
 const DEST_TILE_SIZE: f32 = TILE_SIZE * SCALE;
 
-const NOUNS: &[Noun] = &[Noun::Baba, Noun::Flag, Noun::Rock, Noun::Wall];
-const TEXT: &[Text] = &[
-    Text::Noun(Noun::Baba),
-    Text::Noun(Noun::Flag),
-    Text::Noun(Noun::Rock),
-    Text::Property(Property::You),
-    Text::Property(Property::Stop),
-    Text::Property(Property::Push),
-    Text::Property(Property::Win),
-    Text::Operator(Operator::Is),
-    Text::Noun(Noun::Wall),
-];
-
 const KEYMAP: &[(KeyCode, Direction)] = &[
     (KeyCode::W, Direction::North),
     (KeyCode::A, Direction::West),
@@ -42,24 +29,12 @@ const KEYMAP: &[(KeyCode, Direction)] = &[
     (KeyCode::D, Direction::East),
 ];
 
-fn noun_index(noun: Noun) -> Option<usize> {
-    NOUNS.iter().position(|n| *n == noun)
-}
-
-fn text_index(text: Text) -> Option<usize> {
-    TEXT.iter().position(|n| *n == text)
-}
-
 fn direction_index(direction: Direction) -> usize {
     match direction {
         Direction::East | Direction::West => 0,
         Direction::South => 1,
         Direction::North => 2,
     }
-}
-
-fn do_flip_sprite(direction: Direction) -> bool {
-    direction == Direction::West
 }
 
 pub struct Viewer {
@@ -79,31 +54,6 @@ impl Viewer {
         }
     }
 
-    fn draw_tile(&self, t: &Texture2D, index: usize, pos: Pos, dir: Option<Direction>) {
-        let actual_dir = dir.or(Some(Direction::East)).unwrap();
-        let dir_index = direction_index(actual_dir);
-        let flip_x = do_flip_sprite(actual_dir);
-        let params = DrawTextureParams {
-            source: Some(Rect {
-                x: dir_index as f32 * TILE_SIZE,
-                y: index as f32 * TILE_SIZE,
-                w: TILE_SIZE,
-                h: TILE_SIZE,
-            }),
-            dest_size: Some(Vec2::new(DEST_TILE_SIZE, DEST_TILE_SIZE)),
-            flip_x,
-            ..Default::default()
-        };
-
-        draw_texture_ex(
-            t,
-            pos.x as f32 * DEST_TILE_SIZE,
-            pos.y as f32 * DEST_TILE_SIZE,
-            WHITE,
-            params,
-        );
-    }
-
     fn get_pressed_direction() -> Option<Direction> {
         for (key, direction) in KEYMAP {
             if is_key_pressed(*key) {
@@ -111,6 +61,41 @@ impl Viewer {
             }
         }
         None
+    }
+
+    fn draw_unit(&self, unit: &Unit, pos: Pos) {
+        let data = lookup_unit(unit.kind());
+        let (direction_index, flip_x) = match data.sprite.facing {
+            Facing::Fixed => (0, false),
+            Facing::Directional => (
+                direction_index(unit.direction()),
+                unit.direction() == Direction::West,
+            ),
+        };
+        let t = match data.sprite.atlas {
+            Atlas::Sprites => &self.sprites,
+            Atlas::Words => &self.words,
+        };
+        let source = Rect {
+            x: direction_index as f32 * TILE_SIZE,
+            y: data.sprite.row as f32 * TILE_SIZE,
+            w: TILE_SIZE,
+            h: TILE_SIZE,
+        };
+        let dest = Vec2::new(DEST_TILE_SIZE, DEST_TILE_SIZE);
+        let params = DrawTextureParams {
+            source: Some(source),
+            dest_size: Some(dest),
+            flip_x,
+            ..Default::default()
+        };
+        draw_texture_ex(
+            t,
+            pos.x as f32 * DEST_TILE_SIZE,
+            pos.y as f32 * DEST_TILE_SIZE,
+            WHITE,
+            params,
+        );
     }
 
     pub fn status(&self) -> &TurnResult {
@@ -132,18 +117,7 @@ impl Viewer {
         draw_text(self.level.name(), 0.0, 20.0, 30.0, LIGHTGRAY);
 
         for (pos, unit) in self.level.grid().units() {
-            match unit.kind() {
-                UnitKind::Object(noun) => {
-                    if let Some(src) = noun_index(noun) {
-                        self.draw_tile(&self.sprites, src, pos, Some(unit.direction()));
-                    }
-                }
-                UnitKind::Text(text) => {
-                    if let Some(src) = text_index(text) {
-                        self.draw_tile(&self.words, src, pos, None);
-                    }
-                }
-            }
+            self.draw_unit(unit, pos);
         }
     }
 }

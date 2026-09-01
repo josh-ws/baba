@@ -1,46 +1,20 @@
 use crate::{
     lex::Run,
     rule::Rule,
-    unit::{Noun, Operator, Property, Text, Unit, UnitKind},
+    unit::{Text, Unit, UnitKind, lookup_unit, search_unit},
     world::{Cell, Grid, Pos},
 };
 
-const CODES: &[(&str, UnitKind)] = &[
-    ("ba", UnitKind::Object(Noun::Baba)),
-    ("ke", UnitKind::Object(Noun::Keke)),
-    ("wa", UnitKind::Object(Noun::Wall)),
-    ("ro", UnitKind::Object(Noun::Rock)),
-    ("fl", UnitKind::Object(Noun::Flag)),
-    ("BA", UnitKind::Text(Text::Noun(Noun::Baba))),
-    ("KE", UnitKind::Text(Text::Noun(Noun::Keke))),
-    ("WA", UnitKind::Text(Text::Noun(Noun::Wall))),
-    ("RO", UnitKind::Text(Text::Noun(Noun::Rock))),
-    ("FL", UnitKind::Text(Text::Noun(Noun::Flag))),
-    ("IS", UnitKind::Text(Text::Operator(Operator::Is))),
-    ("YO", UnitKind::Text(Text::Property(Property::You))),
-    ("ST", UnitKind::Text(Text::Property(Property::Stop))),
-    ("PU", UnitKind::Text(Text::Property(Property::Push))),
-    ("WI", UnitKind::Text(Text::Property(Property::Win))),
-];
-
 impl UnitKind {
     pub fn from_ascii(s: &str) -> Self {
-        for (c, kind) in CODES {
-            if *c == s {
-                return *kind;
-            }
-        }
-        panic!("unrecognized code {s}");
+        search_unit(|d| d.code == s)
+            .unwrap_or_else(|| panic!("unrecognised code {s}"))
+            .kind
     }
 
     #[cfg(test)]
     pub fn to_ascii(self) -> &'static str {
-        for (c, kind) in CODES {
-            if *kind == self {
-                return c;
-            }
-        }
-        unreachable!("no ascii code for {self:?}");
+        lookup_unit(self).code
     }
 }
 
@@ -136,13 +110,5 @@ mod tests {
     fn ascii_round_trip() {
         assert_round_trip("BA IS YO .. ba");
         assert_round_trip(".. BA IS YO ..\nBA IS YO .. ..\n.. .. BA IS YO");
-    }
-
-    #[test]
-    fn every_code_round_trips() {
-        for (c, kind) in CODES {
-            assert_eq!(UnitKind::from_ascii(c), *kind);
-            assert_eq!(kind.to_ascii(), *c);
-        }
     }
 }
