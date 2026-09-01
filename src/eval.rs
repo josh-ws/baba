@@ -1,7 +1,7 @@
 use crate::{
     lex::lex,
     rule::{Complement, Rules, parse},
-    unit::{Noun, Operator, Property, Unit},
+    unit::{Noun, Operator, Property},
     world::{Cell, Direction, Grid, Pos},
 };
 
@@ -134,27 +134,15 @@ fn push(grid: &mut Grid, rules: &Rules, mover: u64, from: Pos, dir: Direction) -
             for (i, pos) in cells.iter().enumerate().rev() {
                 let to = pos.shift(dir);
                 if i == 0 {
-                    grid.rotate_unit(mover, *pos, dir);
-                    grid.move_unit(mover, *pos, to);
+                    grid.move_matching(*pos, to, dir, |u| u.id() == mover);
                 } else {
-                    grid.rotate_unit(mover, *pos, dir);
-                    move_with_prop(grid, rules, *pos, to, Property::Push);
+                    grid.move_matching(*pos, to, dir, |u| rules.has(u.noun(), Property::Push));
                 }
             }
             true
         }
         None => false,
     }
-}
-
-// move all units on `from` to `to` if they have the specified property
-fn move_with_prop(grid: &mut Grid, rules: &Rules, from: Pos, to: Pos, prop: Property) {
-    let units = grid
-        .at_mut(from)
-        .units_mut()
-        .extract_if(.., |u| rules.has(u.noun(), prop))
-        .collect::<Vec<Unit>>();
-    grid.at_mut(to).units_mut().extend(units);
 }
 
 // walk the grid from `from` in direction `dir`, collecting all cells that must move

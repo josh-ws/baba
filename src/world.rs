@@ -157,23 +157,16 @@ impl Grid {
         None
     }
 
-    pub fn rotate_unit(&mut self, id: u64, from: Pos, direction: Direction) {
-        let units = self
+    // moves all units on `from` to `to`, that match `p`
+    pub fn move_matching(&mut self, from: Pos, to: Pos, dir: Direction, p: impl Fn(&Unit) -> bool) {
+        let mut units = self
             .at_mut(from)
             .units_mut()
-            .iter_mut()
-            .filter(|f| f.id() == id);
-        for unit in units {
-            unit.set_direction(direction);
-        }
-    }
-
-    pub fn move_unit(&mut self, id: u64, from: Pos, to: Pos) {
-        let units = self
-            .at_mut(from)
-            .units_mut()
-            .extract_if(.., |u| u.id() == id)
+            .extract_if(.., |u| p(u))
             .collect::<Vec<Unit>>();
+        for unit in &mut units {
+            unit.set_direction(dir);
+        }
         self.at_mut(to).units_mut().extend(units);
     }
 
