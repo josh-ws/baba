@@ -58,10 +58,15 @@ const UNIT_TYPES: &[UnitTypeData] = &[
     word(Text::Property(Property::Win), "WI", 6),
     word(Text::Operator(Operator::Is), "IS", 7),
     word(Text::Noun(Noun::Wall), "WA", 8),
+    word(Text::Noun(Noun::Cursor), "CU", 9),
+    word(Text::Property(Property::Select), "SE", 10),
     object(Noun::Baba, "ba", 0, Facing::Directional),
     object(Noun::Flag, "fl", 1, Facing::Fixed),
     object(Noun::Rock, "ro", 2, Facing::Fixed),
     object(Noun::Wall, "wa", 3, Facing::Fixed),
+    object(Noun::Cursor, "cu", 4, Facing::Fixed),
+    object(Noun::Tile, "ti", 5, Facing::Fixed),
+    object(Noun::Path, "pa", 6, Facing::Fixed),
 ];
 
 pub fn lookup_unit(kind: UnitKind) -> &'static UnitTypeData {
@@ -82,6 +87,9 @@ pub enum Noun {
     Wall,
     Rock,
     Flag,
+    Cursor,
+    Tile,
+    Path,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -95,6 +103,7 @@ pub enum Property {
     Stop,
     Push,
     Win,
+    Select,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
