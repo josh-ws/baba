@@ -1,7 +1,7 @@
 use crate::{
     lex::Run,
     rule::Rule,
-    unit::{Text, Unit, UnitKind, lookup_unit, search_unit},
+    unit::{Unit, UnitKind, search_unit},
     world::{Cell, Grid, Pos},
 };
 
@@ -14,6 +14,8 @@ impl UnitKind {
 
     #[cfg(test)]
     pub fn to_ascii(self) -> &'static str {
+        use crate::unit::lookup_unit;
+
         lookup_unit(self).code
     }
 }
@@ -85,7 +87,7 @@ impl Run {
 impl Rule {
     #[cfg(test)]
     pub fn to_ascii(&self) -> String {
-        use crate::rule::Complement;
+        use crate::{rule::Complement, unit::Text};
 
         let subject = UnitKind::Text(Text::Noun(self.subject)).to_ascii();
         let operator = UnitKind::Text(Text::Operator(self.operator)).to_ascii();

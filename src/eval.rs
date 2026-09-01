@@ -40,10 +40,8 @@ impl<'a> Turn<'a> {
 
     pub fn run(&mut self) -> TurnResult {
         self.reparse();
-        self.move_you();
-        self.reparse();
-        self.handle_transforms();
-        self.reparse();
+        self.move_you().then(|| self.reparse());
+        self.handle_transforms().then(|| self.reparse());
         self.check_status()
     }
 
@@ -59,29 +57,32 @@ impl<'a> Turn<'a> {
         self.rules = parse(&lex(self.grid));
     }
 
-    fn move_you(&mut self) {
+    fn move_you(&mut self) -> bool {
         let you = query_prop(self.grid, &self.rules, Property::You);
-        for id in you {
-            if let Some(from) = self.grid.find_unit(id) {
-                push(self.grid, &self.rules, id, from, self.input);
+        let mut moved = false;
+        for id in &you {
+            if let Some(from) = self.grid.find_unit(*id) {
+                moved |= push(self.grid, &self.rules, *id, from, self.input);
             }
         }
+        moved
     }
 
-    fn handle_transforms(&mut self) {
-        for t in query_transforms(self.grid, &self.rules) {
+    fn handle_transforms(&mut self) -> bool {
+        let transforms = query_transforms(self.grid, &self.rules);
+        for t in &transforms {
             self.grid.transform_unit(t.unit_id, t.pos, t.into);
         }
+        !transforms.is_empty()
     }
 }
 
 fn query_transforms(grid: &Grid, rules: &Rules) -> Vec<Transformation> {
     let mut result = Vec::new();
     for (pos, unit) in grid.units() {
-        match transforming_into(rules, unit.noun()) {
-            Some(target) => result.push(Transformation::new(unit.id(), pos, target)),
-            None => (),
-        };
+        if let Some(target) = transforming_into(rules, unit.noun()) {
+            result.push(Transformation::new(unit.id(), pos, target));
+        }
     }
     result
 }
@@ -129,7 +130,7 @@ fn any_cell_has(grid: &Grid, rules: &Rules, props: &[Property]) -> bool {
 }
 
 fn push(grid: &mut Grid, rules: &Rules, mover: u64, from: Pos, dir: Direction) -> bool {
-    match movement_stack(grid, rules, from, dir) {
+    match movement_chain(grid, rules, from, dir) {
         Some(cells) => {
             for (i, pos) in cells.iter().enumerate().rev() {
                 let to = pos.shift(dir);
@@ -147,7 +148,7 @@ fn push(grid: &mut Grid, rules: &Rules, mover: u64, from: Pos, dir: Direction) -
 
 // walk the grid from `from` in direction `dir`, collecting all cells that must move
 // `None` result means movement is impossible
-fn movement_stack(grid: &Grid, rules: &Rules, from: Pos, dir: Direction) -> Option<Vec<Pos>> {
+fn movement_chain(grid: &Grid, rules: &Rules, from: Pos, dir: Direction) -> Option<Vec<Pos>> {
     let mut cells_to_move = vec![from];
     let mut next = from.shift(dir);
     loop {

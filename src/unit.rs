@@ -67,8 +67,7 @@ const UNIT_TYPES: &[UnitTypeData] = &[
 pub fn lookup_unit(kind: UnitKind) -> &'static UnitTypeData {
     UNIT_TYPES
         .iter()
-        .filter(|p| p.kind == kind)
-        .last()
+        .find(|p| p.kind == kind)
         .expect("missing unit kind")
 }
 

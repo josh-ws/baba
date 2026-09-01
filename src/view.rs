@@ -1,8 +1,9 @@
 use macroquad::{
-    color::{BLACK, LIGHTGRAY, WHITE},
-    input::KeyCode,
-    input::is_key_pressed,
+    color::{BLACK, DARKGRAY, LIGHTGRAY, WHITE},
+    input::{KeyCode, is_key_pressed},
     math::{Rect, Vec2},
+    miniquad::window::set_window_size,
+    shapes::draw_rectangle,
     text::draw_text,
     texture::{DrawTextureParams, Texture2D, draw_texture_ex, load_texture},
     window::{clear_background, next_frame},
@@ -46,6 +47,7 @@ pub struct Viewer {
 
 impl Viewer {
     pub async fn new(level: Level) -> Self {
+        set_window_size(800, 800);
         Viewer {
             level,
             status: TurnResult::Continue,
@@ -103,9 +105,6 @@ impl Viewer {
     }
 
     pub fn update(&mut self) {
-        if self.status == TurnResult::Win {
-            return;
-        }
         self.status = match Viewer::get_pressed_direction() {
             Some(direction) => self.level.update(direction),
             _ => TurnResult::Continue,
@@ -114,6 +113,13 @@ impl Viewer {
 
     pub fn draw(&self) {
         clear_background(BLACK);
+        draw_rectangle(
+            0.,
+            0.,
+            self.level.grid().width() as f32 * DEST_TILE_SIZE,
+            self.level.grid().height() as f32 * DEST_TILE_SIZE,
+            DARKGRAY,
+        );
         draw_text(self.level.name(), 0.0, 20.0, 30.0, LIGHTGRAY);
 
         for (pos, unit) in self.level.grid().units() {
@@ -125,13 +131,10 @@ impl Viewer {
 pub async fn run_game(level_src: &str) {
     let level = Level::read(level_src);
     let mut viewer = Viewer::new(level).await;
-    loop {
+    while *viewer.status() != TurnResult::Win {
         viewer.update();
         viewer.draw();
-        if *viewer.status() == TurnResult::Win {
-            println!("You win!");
-            break;
-        }
         next_frame().await;
     }
+    println!("You win!");
 }
