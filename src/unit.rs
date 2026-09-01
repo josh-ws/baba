@@ -79,7 +79,6 @@ pub fn search_unit(pred: impl Fn(&UnitTypeData) -> bool) -> Option<&'static Unit
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Noun {
     Baba,
-    Keke,
     Text,
     Wall,
     Rock,

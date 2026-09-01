@@ -114,28 +114,28 @@ mod tests {
     #[test]
     fn parse_finds_rules() {
         assert_parse_match("BA IS YO", vec!["BA IS YO"]);
-        assert_parse_match("BA IS KE", vec!["BA IS KE"]);
+        assert_parse_match("BA IS RO", vec!["BA IS RO"]);
     }
 
     #[test]
     fn parse_multi_rule() {
-        assert_parse_match("BA IS KE IS BA", vec!["BA IS KE", "KE IS BA"]);
+        assert_parse_match("BA IS RO IS BA", vec!["BA IS RO", "RO IS BA"]);
         assert_parse_match(
-            "BA IS KE IS BA IS KE",
-            vec!["BA IS KE", "KE IS BA", "BA IS KE"],
+            "BA IS RO IS BA IS RO",
+            vec!["BA IS RO", "RO IS BA", "BA IS RO"],
         );
     }
 
     #[test]
     fn parse_cross() {
-        assert_parse_match(".. BA ..\nKE IS BA\n.. KE ..", vec!["KE IS BA", "BA IS KE"]);
+        assert_parse_match(".. BA ..\nRO IS BA\n.. RO ..", vec!["RO IS BA", "BA IS RO"]);
     }
 
     #[test]
     fn parse_non_square() {
         assert_parse_match(
-            "BA IS YO ..\n.. .. .. ..\nKE IS BA ..",
-            vec!["BA IS YO", "KE IS BA"],
+            "BA IS YO ..\n.. .. .. ..\nRO IS BA ..",
+            vec!["BA IS YO", "RO IS BA"],
         );
     }
 

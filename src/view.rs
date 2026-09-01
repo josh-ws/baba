@@ -11,7 +11,7 @@ use macroquad::{
 use crate::{
     eval::TurnResult,
     level::Level,
-    unit::{Atlas, Facing, Noun, Operator, Property, Text, Unit, UnitKind, lookup_unit},
+    unit::{Atlas, Facing, Unit, lookup_unit},
     world::{
         Direction::{self},
         Pos,

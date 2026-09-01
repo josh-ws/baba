@@ -313,24 +313,24 @@ mod tests {
 
     #[test]
     fn transform() {
-        assert_move_result("BA IS KE ba", "BA IS KE ke", Direction::East);
+        assert_move_result("BA IS RO ba", "BA IS RO ro", Direction::East);
         assert_move_result(
-            "BA IS KE IS BA ba ke",
-            "BA IS KE IS BA ke ba",
+            "BA IS RO IS BA ba ro",
+            "BA IS RO IS BA ro ba",
             Direction::East,
         );
     }
 
     #[test]
     fn transform_no_loopback() {
-        assert_move_result("BA IS KE IS BA ba", "BA IS KE IS BA ke", Direction::East);
+        assert_move_result("BA IS RO IS BA ba", "BA IS RO IS BA ro", Direction::East);
     }
 
     #[test]
     fn transform_x_is_x() {
         assert_move_result(
-            "BA IS KE BA IS BA ba",
-            "BA IS KE BA IS BA ba",
+            "BA IS RO BA IS BA ba",
+            "BA IS RO BA IS BA ba",
             Direction::East,
         );
     }
