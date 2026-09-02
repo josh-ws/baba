@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::unit::{Noun, Text, Unit, UnitKind};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -75,6 +77,7 @@ pub struct Grid {
     w: i32,
     h: i32,
     next_id: u64,
+    links: HashMap<u64, String>,
 }
 
 impl Grid {
@@ -84,7 +87,16 @@ impl Grid {
             h,
             cells: vec![Cell::new(); (w * h) as usize],
             next_id: 0,
+            links: HashMap::new(),
         }
+    }
+
+    pub fn link_of(&self, unit_id: u64) -> Option<String> {
+        Some(self.links[&unit_id].clone())
+    }
+
+    pub fn set_link(&mut self, unit_id: u64, key: &str) {
+        self.links.insert(unit_id, key.to_string());
     }
 
     pub fn cells(&self) -> &Vec<Cell> {
