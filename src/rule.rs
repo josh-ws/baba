@@ -13,11 +13,18 @@ pub enum Complement {
 
 pub struct Rules(Vec<Rule>);
 
-const INHERENT: &[Rule] = &[Rule {
-    subject: Noun::Text,
-    operator: Operator::Is,
-    complement: Complement::Property(Property::Push),
-}];
+const INHERENT: &[Rule] = &[
+    Rule {
+        subject: Noun::Text,
+        operator: Operator::Is,
+        complement: Complement::Property(Property::Push),
+    },
+    Rule {
+        subject: Noun::Level,
+        operator: Operator::Is,
+        complement: Complement::Property(Property::Stop),
+    },
+];
 
 impl Rules {
     pub fn new() -> Rules {

@@ -11,6 +11,6 @@ mod world;
 
 #[macroquad::main("baba")]
 async fn main() {
-    let data = include_str!("../assets/levels/where.txt");
+    let data = include_str!("../assets/levels/map.txt");
     run_game(data).await
 }

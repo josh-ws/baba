@@ -41,6 +41,7 @@ impl<'a> Turn<'a> {
     pub fn run(&mut self) -> TurnResult {
         self.reparse();
         self.move_you().then(|| self.reparse());
+        self.move_select().then(|| self.reparse());
         self.handle_transforms().then(|| self.reparse());
         self.check_status()
     }
@@ -63,6 +64,26 @@ impl<'a> Turn<'a> {
         for id in &you {
             if let Some(from) = self.grid.find_unit(*id) {
                 moved |= push(self.grid, &self.rules, *id, from, self.input);
+            }
+        }
+        moved
+    }
+
+    fn move_select(&mut self) -> bool {
+        let select = query_prop(self.grid, &self.rules, Property::Select);
+        let mut moved = false;
+        for id in &select {
+            if let Some(from) = self.grid.find_unit(*id) {
+                let target = from.shift(self.input);
+                if !self.grid.in_bounds(target) {
+                    continue;
+                }
+                if !self.grid.at(target).units().iter().any(|f| f.is_object()) {
+                    continue;
+                }
+                self.grid
+                    .move_matching(from, target, self.input, |p| p.id() == *id);
+                moved = true;
             }
         }
         moved
@@ -320,6 +341,41 @@ mod tests {
         assert_move_result(
             "BA IS RO BA IS BA ba",
             "BA IS RO BA IS BA ba",
+            Direction::East,
+        );
+    }
+
+    // test level is stop by default
+    #[test]
+    fn level_is_stop_inherently() {
+        assert_move_result("BA IS YO ba le", "BA IS YO ba le", Direction::East);
+        assert_move_result(
+            "BA IS YO LE IS PU ba le ..",
+            "BA IS YO LE IS PU ba le ..",
+            Direction::East,
+        );
+    }
+
+    #[test]
+    fn select_can_move_onto_objects() {
+        assert_move_result("cu ba CU IS SE", ".. cu CU IS SE", Direction::East);
+    }
+
+    #[test]
+    fn select_cannot_move_onto_words() {
+        assert_move_result("CU IS SE cu BA", "CU IS SE cu BA", Direction::East);
+    }
+
+    #[test]
+    fn select_ignores_move_rules() {
+        assert_move_result(
+            "CU IS SE BA IS PU cu ba ..",
+            "CU IS SE BA IS PU .. cu ..",
+            Direction::East,
+        );
+        assert_move_result(
+            "CU IS SE BA IS ST cu ba ..",
+            "CU IS SE BA IS ST .. cu ..",
             Direction::East,
         );
     }

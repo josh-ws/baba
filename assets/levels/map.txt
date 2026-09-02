@@ -1,8 +1,8 @@
 Name = Test Map
 Key = Map
 Data =
-CU IS SE .. ..
-.. .. .. .. ..
-.. .. .. .. ..
-ti pa cu pa ti
-.. .. .. .. ..
+CU IS SE BA IS YO
+.. cu .. .. .. ba
+le pa pa pa le ..
+.. .. .. .. le le
+.. .. .. le le le
