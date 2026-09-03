@@ -15,13 +15,15 @@ use crate::{
     unit::{Atlas, Facing, Unit, lookup_unit},
     world::{
         Direction::{self},
-        Pos,
+        Grid, Pos,
     },
 };
 
 const WINDOW_WIDTH: u32 = 800;
 const WINDOW_HEIGHT: u32 = 820;
 const TILE_SIZE: f32 = 24.0;
+const BACKGROUND_COLOR: Color = Color::new(0.1, 0.2, 0.2, 1.);
+const GRID_COLOR: Color = Color::new(0.1, 0.25, 0.25, 1.);
 
 const KEYMAP: &[(KeyCode, Direction)] = &[
     (KeyCode::W, Direction::North),
@@ -38,129 +40,114 @@ fn direction_index(direction: Direction) -> usize {
     }
 }
 
+struct Layout {
+    origin: Vec2,    // where the level is drawn
+    grid_size: Vec2, // total size, in pixels, of the level grid
+    tile: f32,       // size in pixels of each destination tile
+}
+
+impl Layout {
+    fn new(grid: &Grid, screen_size: Vec2) -> Self {
+        debug_assert!(grid.width() > 0);
+        let fit =
+            (screen_size / Vec2::new(grid.width() as f32, grid.height() as f32)).min_element();
+        let tile = (fit / TILE_SIZE).floor().max(1.) * TILE_SIZE;
+        let grid_size = Vec2::new(grid.width() as f32, grid.height() as f32) * tile;
+        Self {
+            origin: ((screen_size - grid_size) / 2.).floor(),
+            grid_size,
+            tile,
+        }
+    }
+
+    fn screen_position(&self, pos: Pos) -> Vec2 {
+        self.origin + Vec2::new(pos.x as f32, pos.y as f32) * self.tile
+    }
+}
+
 pub struct Viewer {
-    level: Level,
-    status: TurnResult,
     sprites: Texture2D,
     words: Texture2D,
 }
 
 impl Viewer {
-    pub async fn new(level: Level) -> Self {
+    pub async fn new() -> Self {
         set_window_size(WINDOW_WIDTH, WINDOW_HEIGHT);
         let sprites = load_texture("assets/sprites.png").await.unwrap();
         let words = load_texture("assets/words.png").await.unwrap();
         sprites.set_filter(FilterMode::Nearest);
         words.set_filter(FilterMode::Nearest);
-        Viewer {
-            level,
-            status: TurnResult::Continue,
-            sprites,
-            words,
-        }
+        Viewer { sprites, words }
     }
 
-    pub fn status(&self) -> &TurnResult {
-        &self.status
-    }
-
-    pub fn update(&mut self) {
-        self.status = match Viewer::get_pressed_direction() {
-            Some(direction) => self.level.update(direction),
-            _ => TurnResult::Continue,
-        };
-    }
-
-    pub fn draw(&self) {
-        const BACKGROUND_COLOR: Color = Color::new(0.1, 0.2, 0.2, 1.);
-        const GRID_BACKGROUND_COLOR: Color = Color::new(0.1, 0.25, 0.25, 1.);
-
+    pub fn draw(&self, level: &Level) {
+        let layout = Layout::new(level.grid(), Vec2::new(screen_width(), screen_height()));
+        let Layout {
+            grid_size, origin, ..
+        } = layout;
         clear_background(BACKGROUND_COLOR);
-        let origin = self.origin();
-        let size = self.board_size();
-        draw_rectangle(origin.x, origin.y, size.x, size.y, GRID_BACKGROUND_COLOR);
-        draw_text(self.level.name(), 0.0, 20.0, 30.0, LIGHTGRAY);
-        for (pos, unit) in self.level.grid().units() {
-            self.draw_unit(unit, pos);
+        draw_rectangle(origin.x, origin.y, grid_size.x, grid_size.y, GRID_COLOR);
+        draw_text(level.name(), 0.0, 20.0, 30.0, LIGHTGRAY);
+        for (pos, unit) in level.grid().units() {
+            self.draw_unit(unit, pos, &layout);
         }
     }
 
-    fn get_pressed_direction() -> Option<Direction> {
-        for (key, direction) in KEYMAP {
-            if is_key_pressed(*key) {
-                return Some(*direction);
-            }
-        }
-        None
-    }
-
-    fn scale(&self) -> f32 {
-        let grid = self.level.grid();
-        let width = screen_width() / grid.width() as f32;
-        let height = screen_height() / grid.height() as f32;
-        let min_size = if width < height { width } else { height };
-        (min_size / TILE_SIZE).floor().max(1.0)
-    }
-
-    fn dest_tile_size(&self) -> f32 {
-        self.scale() * TILE_SIZE
-    }
-
-    fn board_size(&self) -> Vec2 {
-        let grid = self.level.grid();
-        Vec2::new(grid.width() as f32, grid.height() as f32) * self.dest_tile_size()
-    }
-
-    fn origin(&self) -> Vec2 {
-        let board_size = self.board_size();
-        let screen_size = Vec2::new(screen_width(), screen_height());
-        let diff = (screen_size - board_size) / 2.;
-        diff.floor()
-    }
-
-    fn screen_position(&self, pos: Pos) -> Vec2 {
-        self.origin() + Vec2::new(pos.x as f32, pos.y as f32) * self.dest_tile_size()
-    }
-
-    fn draw_unit(&self, unit: &Unit, pos: Pos) {
+    fn draw_unit(&self, unit: &Unit, pos: Pos, layout: &Layout) {
         let data = lookup_unit(unit.kind());
-        let (direction_index, flip_x) = match data.sprite.facing {
-            Facing::Fixed => (0, false),
-            Facing::Directional => (
-                direction_index(unit.direction()),
-                unit.direction() == Direction::West,
-            ),
-        };
-        let t = match data.sprite.atlas {
-            Atlas::Sprites => &self.sprites,
-            Atlas::Words => &self.words,
-        };
-        let source = Rect {
-            x: direction_index as f32 * TILE_SIZE,
-            y: data.sprite.row as f32 * TILE_SIZE,
-            w: TILE_SIZE,
-            h: TILE_SIZE,
-        };
-        let dest_tile_size = self.dest_tile_size();
-        let dest = Vec2::new(dest_tile_size, dest_tile_size);
+        let (direction_index, flip_x) = sprite_facing(unit.direction(), data.sprite.facing);
+        let texture = self.atlas_texture(&data.sprite.atlas);
         let params = DrawTextureParams {
-            source: Some(source),
-            dest_size: Some(dest),
+            source: Some(Rect {
+                x: direction_index as f32 * TILE_SIZE,
+                y: data.sprite.row as f32 * TILE_SIZE,
+                w: TILE_SIZE,
+                h: TILE_SIZE,
+            }),
+            dest_size: Some(Vec2::new(layout.tile, layout.tile)),
             flip_x,
             ..Default::default()
         };
-        let at = self.screen_position(pos);
-        draw_texture_ex(t, at.x, at.y, WHITE, params);
+        let at = layout.screen_position(pos);
+        draw_texture_ex(texture, at.x, at.y, WHITE, params);
+    }
+
+    fn atlas_texture(&self, atlas: &Atlas) -> &Texture2D {
+        match atlas {
+            Atlas::Sprites => &self.sprites,
+            Atlas::Words => &self.words,
+        }
     }
 }
 
-pub async fn run_game(level_src: &str) {
-    let level = Level::read(level_src);
-    let mut viewer = Viewer::new(level).await;
-    while *viewer.status() != TurnResult::Win {
-        viewer.update();
-        viewer.draw();
-        next_frame().await;
+fn sprite_facing(direction: Direction, facing: Facing) -> (usize, bool) {
+    match facing {
+        Facing::Fixed => (0, false),
+        Facing::Directional => (direction_index(direction), direction == Direction::West),
     }
-    println!("You win!");
+}
+
+fn get_pressed_direction() -> Option<Direction> {
+    for (key, direction) in KEYMAP {
+        if is_key_pressed(*key) {
+            return Some(*direction);
+        }
+    }
+    None
+}
+
+pub async fn run_game(level: &mut Level) {
+    let viewer = Viewer::new().await;
+    loop {
+        let result = match get_pressed_direction() {
+            Some(dir) => level.update(dir),
+            None => TurnResult::Continue,
+        };
+        viewer.draw(level);
+        next_frame().await;
+        if result == TurnResult::Win {
+            println!("You win!");
+            break;
+        }
+    }
 }

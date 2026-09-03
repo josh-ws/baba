@@ -5,7 +5,6 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Level {
-    key: String,
     name: String,
     grid: Grid,
 }
@@ -13,7 +12,6 @@ pub struct Level {
 impl Default for Level {
     fn default() -> Self {
         Self {
-            key: Default::default(),
             name: Default::default(),
             grid: Grid::empty(0, 0),
         }
@@ -21,6 +19,12 @@ impl Default for Level {
 }
 
 impl Level {
+    pub fn new() -> Self {
+        Self {
+            ..Default::default()
+        }
+    }
+
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -30,12 +34,11 @@ impl Level {
     }
 
     pub fn read(src: &str) -> Level {
-        let mut level = Level::default();
+        let mut level = Level::new();
         let mut data = String::new();
         for line in src.lines() {
             match line.trim().split_once("=") {
                 Some((key, value)) => match key.trim() {
-                    "Key" => level.key = value.trim().to_string(),
                     "Name" => level.name = value.trim().to_string(),
                     _ => (),
                 },

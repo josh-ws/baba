@@ -1,8 +1,0 @@
-Name = Small
-Key = small
-Data =
-BA IS YO .. ..
-.. WA IS ST ..
-.. .. .. FL ..
-wa .. .. .. ..
-FL IS WI .. ba

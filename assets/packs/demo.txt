@@ -1,4 +1,40 @@
-Key = where
+Pack = Demo Pack
+Root = map
+
+[map]
+Name = Test Map
+Link = 0,2 test-level
+Link = 4,2 small
+Link = 5,2 demo
+Data =
+CU IS SE .. .. ..
+.. cu .. .. .. ..
+le pa pa pa le le
+
+[test-level]
+Name = Test Level
+Data =
+.. .. .. .. .. .. ..
+.. .. .. BA .. .. ..
+.. .. RO IS PU .. ..
+.. .. IS YO .. .. ..
+.. .. WI .. .. .. ..
+.. .. .. .. .. .. ..
+.. .. ba .. ro .. ..
+.. .. .. .. .. .. ..
+wa wa wa wa wa wa wa
+WA IS ST .. .. .. ..
+
+[small]
+Name = Small
+Data =
+BA IS YO .. ..
+.. WA IS ST ..
+.. .. .. FL ..
+wa .. .. .. ..
+FL IS WI .. ba
+
+[where]
 Name = Where do I go?
 Data =
 .. .. .. .. .. .. .. .. .. .. .. .. .. ..

@@ -92,7 +92,7 @@ impl Grid {
     }
 
     pub fn link_of(&self, unit_id: u64) -> Option<String> {
-        Some(self.links[&unit_id].clone())
+        self.links.get(&unit_id).cloned()
     }
 
     pub fn set_link(&mut self, unit_id: u64, key: &str) {
@@ -188,5 +188,24 @@ impl Grid {
         };
         let new_id = self.next();
         self.at_mut(pos).units_mut()[i] = Unit::new(new_id, UnitKind::Object(into));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::world::Grid;
+
+    #[test]
+    fn round_trip_link() {
+        let mut grid = Grid::empty(20, 20);
+        grid.set_link(123, "hello world");
+        assert_eq!(grid.link_of(123).unwrap(), "hello world".to_string());
+    }
+
+    #[test]
+    fn link_of_returns_none_if_no_link() {
+        let mut grid = Grid::empty(20, 20);
+        grid.set_link(123, "hello world");
+        assert!(grid.link_of(456).is_none());
     }
 }

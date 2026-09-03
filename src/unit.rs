@@ -1,10 +1,12 @@
 use crate::world::Direction;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Atlas {
     Sprites,
     Words,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Facing {
     Directional,
     Fixed,
