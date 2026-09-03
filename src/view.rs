@@ -92,7 +92,6 @@ impl Viewer {
         let Layout { grid_size, origin, .. } = layout;
         clear_background(BACKGROUND_COLOR);
         draw_rectangle(origin.x, origin.y, grid_size.x, grid_size.y, GRID_COLOR);
-        draw_text(level.name(), 0.0, 20.0, 30.0, LIGHTGRAY);
         for (pos, unit) in level.grid().units() {
             self.draw_unit(unit, pos, &layout, wobble);
         }

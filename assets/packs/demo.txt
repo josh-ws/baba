@@ -3,9 +3,10 @@ Root = map
 
 [map]
 Name = Test Map
+Kind = map
 Link = 0,2 test-level
 Link = 4,2 small
-Link = 5,2 demo
+Link = 5,2 where
 Data =
 CU IS SE LE IS ST
 .. cu .. .. .. ..

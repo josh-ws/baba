@@ -77,7 +77,6 @@ pub struct Grid {
     w: i32,
     h: i32,
     next_id: u64,
-    links: HashMap<u64, String>,
 }
 
 impl Grid {
@@ -87,16 +86,7 @@ impl Grid {
             h,
             cells: vec![Cell::new(); (w * h) as usize],
             next_id: 0,
-            links: HashMap::new(),
         }
-    }
-
-    pub fn link_of(&self, unit_id: u64) -> Option<String> {
-        self.links.get(&unit_id).cloned()
-    }
-
-    pub fn set_link(&mut self, unit_id: u64, key: &str) {
-        self.links.insert(unit_id, key.to_string());
     }
 
     pub fn cells(&self) -> &Vec<Cell> {
@@ -194,18 +184,4 @@ impl Grid {
 #[cfg(test)]
 mod tests {
     use crate::world::Grid;
-
-    #[test]
-    fn round_trip_link() {
-        let mut grid = Grid::empty(20, 20);
-        grid.set_link(123, "hello world");
-        assert_eq!(grid.link_of(123).unwrap(), "hello world".to_string());
-    }
-
-    #[test]
-    fn link_of_returns_none_if_no_link() {
-        let mut grid = Grid::empty(20, 20);
-        grid.set_link(123, "hello world");
-        assert!(grid.link_of(456).is_none());
-    }
 }
