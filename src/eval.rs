@@ -1,14 +1,26 @@
 use crate::{
     lex::lex,
     rule::{Complement, Rules, parse},
-    unit::{Noun, Operator, Property},
+    unit::{Noun, Operator, Property, Unit},
     world::{Cell, Direction, Grid, Pos},
 };
 
 #[derive(Debug, PartialEq)]
-pub enum TurnResult {
+pub enum TurnStatus {
     Continue,
     Win,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TurnResult {
+    pub status: TurnStatus,
+    pub selected: Vec<u64>, // all unit ids that a SELECT unit is touching
+}
+
+impl TurnResult {
+    pub fn new(status: TurnStatus, selected: Vec<u64>) -> Self {
+        Self { status, selected }
+    }
 }
 
 struct Transformation {
@@ -43,14 +55,14 @@ impl<'a> Turn<'a> {
         self.move_you().then(|| self.reparse());
         self.move_select().then(|| self.reparse());
         self.handle_transforms().then(|| self.reparse());
-        self.check_status()
+        TurnResult::new(self.check_status(), query_selected(self.grid, &self.rules))
     }
 
-    fn check_status(&self) -> TurnResult {
+    fn check_status(&self) -> TurnStatus {
         if any_cell_has(self.grid, &self.rules, &[Property::Win, Property::You]) {
-            TurnResult::Win
+            TurnStatus::Win
         } else {
-            TurnResult::Continue
+            TurnStatus::Continue
         }
     }
 
@@ -81,8 +93,7 @@ impl<'a> Turn<'a> {
                 if !self.grid.at(target).units().iter().any(|f| f.is_object()) {
                     continue;
                 }
-                self.grid
-                    .move_matching(from, target, self.input, |p| p.id() == *id);
+                self.grid.move_matching(from, target, self.input, |p| p.id() == *id);
                 moved = true;
             }
         }
@@ -139,6 +150,16 @@ fn query_prop(grid: &Grid, rules: &Rules, prop: Property) -> Vec<u64> {
         .collect::<Vec<u64>>()
 }
 
+fn query_selected(grid: &Grid, rules: &Rules) -> Vec<u64> {
+    grid.cells()
+        .iter()
+        .filter(|c| cell_has(c, rules, Property::Select))
+        .flat_map(Cell::units)
+        .filter(|u| u.is_object() && !rules.has(u.noun(), Property::Select))
+        .map(Unit::id)
+        .collect::<Vec<u64>>()
+}
+
 fn cell_has(cell: &Cell, rules: &Rules, prop: Property) -> bool {
     cell.units().iter().any(|u| rules.has(u.noun(), prop))
 }
@@ -190,7 +211,7 @@ fn movement_chain(grid: &Grid, rules: &Rules, from: Pos, dir: Direction) -> Opti
 #[cfg(test)]
 mod tests {
     use crate::{
-        eval::{Turn, TurnResult},
+        eval::{Turn, TurnStatus},
         world::{Direction, Grid},
     };
 
@@ -202,35 +223,23 @@ mod tests {
     }
 
     #[track_caller]
-    fn assert_result(src: &str, dir: Direction, expected: TurnResult) {
+    fn assert_result(src: &str, dir: Direction, expected: TurnStatus) {
         let mut grid = Grid::from_ascii(src);
         let result = Turn::new(&mut grid, dir).run();
-        assert_eq!(result, expected);
+        assert_eq!(result.status, expected);
     }
 
     #[test]
     fn basic_you_movement() {
         assert_move_result("BA IS YO ba .. ..", "BA IS YO .. ba ..", Direction::East);
         assert_move_result("BA IS YO .. ba ..", "BA IS YO ba .. ..", Direction::West);
-        assert_move_result(
-            "BA IS YO ba\n.. .. .. ..",
-            "BA IS YO ..\n.. .. .. ba",
-            Direction::South,
-        );
-        assert_move_result(
-            "BA IS YO ..\n.. .. .. ba",
-            "BA IS YO ba\n.. .. .. ..",
-            Direction::North,
-        );
+        assert_move_result("BA IS YO ba\n.. .. .. ..", "BA IS YO ..\n.. .. .. ba", Direction::South);
+        assert_move_result("BA IS YO ..\n.. .. .. ba", "BA IS YO ba\n.. .. .. ..", Direction::North);
     }
 
     #[test]
     fn you_multi_move() {
-        assert_move_result(
-            "BA IS YO ba ba ba .. ..",
-            "BA IS YO .. ba ba ba ..",
-            Direction::East,
-        );
+        assert_move_result("BA IS YO ba ba ba .. ..", "BA IS YO .. ba ba ba ..", Direction::East);
     }
 
     #[test]
@@ -303,12 +312,12 @@ mod tests {
 
     #[test]
     fn win_standing_on_win_tile() {
-        assert_result("BA IS YO RO IS WI ba ro", Direction::East, TurnResult::Win);
+        assert_result("BA IS YO RO IS WI ba ro", Direction::East, TurnStatus::Win);
     }
 
     #[test]
     fn win_when_you_is_win() {
-        assert_result("BA IS YO BA IS WI ba", Direction::East, TurnResult::Win);
+        assert_result("BA IS YO BA IS WI ba", Direction::East, TurnStatus::Win);
     }
 
     #[test]
@@ -318,17 +327,13 @@ mod tests {
 
     #[test]
     fn grid_is_reevaluated_after_pushing_words() {
-        assert_result("BA IS YO ba BA .. IS WI", Direction::East, TurnResult::Win);
+        assert_result("BA IS YO ba BA .. IS WI", Direction::East, TurnStatus::Win);
     }
 
     #[test]
     fn transform() {
         assert_move_result("BA IS RO ba", "BA IS RO ro", Direction::East);
-        assert_move_result(
-            "BA IS RO IS BA ba ro",
-            "BA IS RO IS BA ro ba",
-            Direction::East,
-        );
+        assert_move_result("BA IS RO IS BA ba ro", "BA IS RO IS BA ro ba", Direction::East);
     }
 
     #[test]
@@ -338,11 +343,7 @@ mod tests {
 
     #[test]
     fn transform_x_is_x() {
-        assert_move_result(
-            "BA IS RO BA IS BA ba",
-            "BA IS RO BA IS BA ba",
-            Direction::East,
-        );
+        assert_move_result("BA IS RO BA IS BA ba", "BA IS RO BA IS BA ba", Direction::East);
     }
 
     // test level is stop by default

@@ -29,10 +29,12 @@ impl Levelpack {
         pack
     }
 
-    pub fn get_level(&mut self, key: &str) -> &mut Level {
-        self.levels
-            .get_mut(key)
-            .expect("level {key} does not exist")
+    pub fn get_level(&self, key: &str) -> &Level {
+        self.levels.get(key).expect("level {key} does not exist")
+    }
+
+    pub fn get_level_mut(&mut self, key: &str) -> &mut Level {
+        self.levels.get_mut(key).expect("level {key} does not exist")
     }
 
     fn add_key_value(&mut self, key: &str, body: &str) {

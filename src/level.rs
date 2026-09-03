@@ -1,4 +1,4 @@
-use std::{any::Any, collections::HashMap};
+use std::collections::HashMap;
 
 use crate::{
     eval::{Turn, TurnResult},
@@ -45,16 +45,8 @@ impl Level {
         Self { ..Default::default() }
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
     pub fn grid(&self) -> &Grid {
         &self.grid
-    }
-
-    pub fn get_link(&self, unit_id: u64) -> Option<&String> {
-        self.links.get(&unit_id)
     }
 
     pub fn read(src: &str) -> Level {
@@ -85,6 +77,15 @@ impl Level {
 
     pub fn update(&mut self, dir: Direction) -> TurnResult {
         Turn::new(&mut self.grid, dir).run()
+    }
+
+    pub fn caption(&self, selected: &[u64]) -> Option<&str> {
+        for unit in selected {
+            if let Some(key) = self.links.get(unit) {
+                return Some(key);
+            }
+        }
+        None
     }
 
     // TODO(jw) this sucks

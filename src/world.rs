@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::unit::{Noun, Text, Unit, UnitKind};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -179,9 +177,4 @@ impl Grid {
         let new_id = self.next();
         self.at_mut(pos).units_mut()[i] = Unit::new(new_id, UnitKind::Object(into));
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::world::Grid;
 }

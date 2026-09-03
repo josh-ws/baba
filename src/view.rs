@@ -1,17 +1,15 @@
 use macroquad::{
-    color::{Color, LIGHTGRAY, WHITE},
-    input::{KeyCode, is_key_pressed},
+    color::{Color, WHITE},
     math::{Rect, Vec2},
     miniquad::window::set_window_size,
     shapes::draw_rectangle,
     text::draw_text,
     texture::{DrawTextureParams, FilterMode, Texture2D, draw_texture_ex, load_texture},
     time::get_time,
-    window::{clear_background, next_frame, screen_height, screen_width},
+    window::{clear_background, screen_height, screen_width},
 };
 
 use crate::{
-    eval::TurnResult,
     level::Level,
     unit::{Atlas, Facing, Unit, lookup_unit},
     world::{
@@ -27,13 +25,6 @@ const BACKGROUND_COLOR: Color = Color::new(0.1, 0.2, 0.2, 1.);
 const GRID_COLOR: Color = Color::new(0.1, 0.25, 0.25, 1.);
 const WOBBLE_PERIOD: f64 = 0.20;
 const WOBBLE_FRAMES: usize = 3;
-
-const KEYMAP: &[(KeyCode, Direction)] = &[
-    (KeyCode::W, Direction::North),
-    (KeyCode::A, Direction::West),
-    (KeyCode::S, Direction::South),
-    (KeyCode::D, Direction::East),
-];
 
 fn wobble(time: f64) -> usize {
     (time / WOBBLE_PERIOD) as usize % WOBBLE_FRAMES
@@ -86,7 +77,7 @@ impl Viewer {
         Viewer { sprites, words }
     }
 
-    pub fn draw(&self, level: &Level) {
+    pub fn draw(&self, level: &Level, selected: &[u64]) {
         let layout = Layout::new(level.grid(), Vec2::new(screen_width(), screen_height()));
         let wobble = wobble(get_time());
         let Layout { grid_size, origin, .. } = layout;
@@ -94,6 +85,10 @@ impl Viewer {
         draw_rectangle(origin.x, origin.y, grid_size.x, grid_size.y, GRID_COLOR);
         for (pos, unit) in level.grid().units() {
             self.draw_unit(unit, pos, &layout, wobble);
+        }
+
+        if let Some(caption) = level.caption(selected) {
+            draw_text(caption, 0., 40., 64., WHITE);
         }
     }
 
@@ -138,29 +133,4 @@ fn sprite_column(atlas: Atlas, facing: Facing, direction: Direction, wobble: usi
         Atlas::Words => 1,
     };
     (wobble * stride + dir, flip)
-}
-
-fn get_pressed_direction() -> Option<Direction> {
-    for (key, direction) in KEYMAP {
-        if is_key_pressed(*key) {
-            return Some(*direction);
-        }
-    }
-    None
-}
-
-pub async fn run_game(level: &mut Level) {
-    let viewer = Viewer::new().await;
-    loop {
-        let result = match get_pressed_direction() {
-            Some(dir) => level.update(dir),
-            None => TurnResult::Continue,
-        };
-        viewer.draw(level);
-        next_frame().await;
-        if result == TurnResult::Win {
-            println!("You win!");
-            break;
-        }
-    }
 }
