@@ -7,7 +7,7 @@ Link = 0,2 test-level
 Link = 4,2 small
 Link = 5,2 demo
 Data =
-CU IS SE .. .. ..
+CU IS SE LE IS ST
 .. cu .. .. .. ..
 le pa pa pa le le
 

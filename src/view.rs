@@ -6,6 +6,7 @@ use macroquad::{
     shapes::draw_rectangle,
     text::draw_text,
     texture::{DrawTextureParams, FilterMode, Texture2D, draw_texture_ex, load_texture},
+    time::get_time,
     window::{clear_background, next_frame, screen_height, screen_width},
 };
 
@@ -24,6 +25,8 @@ const WINDOW_HEIGHT: u32 = 820;
 const TILE_SIZE: f32 = 24.0;
 const BACKGROUND_COLOR: Color = Color::new(0.1, 0.2, 0.2, 1.);
 const GRID_COLOR: Color = Color::new(0.1, 0.25, 0.25, 1.);
+const WOBBLE_PERIOD: f64 = 0.20;
+const WOBBLE_FRAMES: usize = 3;
 
 const KEYMAP: &[(KeyCode, Direction)] = &[
     (KeyCode::W, Direction::North),
@@ -31,6 +34,10 @@ const KEYMAP: &[(KeyCode, Direction)] = &[
     (KeyCode::S, Direction::South),
     (KeyCode::D, Direction::East),
 ];
+
+fn wobble(time: f64) -> usize {
+    (time / WOBBLE_PERIOD) as usize % WOBBLE_FRAMES
+}
 
 fn direction_index(direction: Direction) -> usize {
     match direction {
@@ -49,8 +56,7 @@ struct Layout {
 impl Layout {
     fn new(grid: &Grid, screen_size: Vec2) -> Self {
         debug_assert!(grid.width() > 0);
-        let fit =
-            (screen_size / Vec2::new(grid.width() as f32, grid.height() as f32)).min_element();
+        let fit = (screen_size / Vec2::new(grid.width() as f32, grid.height() as f32)).min_element();
         let tile = (fit / TILE_SIZE).floor().max(1.) * TILE_SIZE;
         let grid_size = Vec2::new(grid.width() as f32, grid.height() as f32) * tile;
         Self {
@@ -82,24 +88,23 @@ impl Viewer {
 
     pub fn draw(&self, level: &Level) {
         let layout = Layout::new(level.grid(), Vec2::new(screen_width(), screen_height()));
-        let Layout {
-            grid_size, origin, ..
-        } = layout;
+        let wobble = wobble(get_time());
+        let Layout { grid_size, origin, .. } = layout;
         clear_background(BACKGROUND_COLOR);
         draw_rectangle(origin.x, origin.y, grid_size.x, grid_size.y, GRID_COLOR);
         draw_text(level.name(), 0.0, 20.0, 30.0, LIGHTGRAY);
         for (pos, unit) in level.grid().units() {
-            self.draw_unit(unit, pos, &layout);
+            self.draw_unit(unit, pos, &layout, wobble);
         }
     }
 
-    fn draw_unit(&self, unit: &Unit, pos: Pos, layout: &Layout) {
+    fn draw_unit(&self, unit: &Unit, pos: Pos, layout: &Layout, wobble: usize) {
         let data = lookup_unit(unit.kind());
-        let (direction_index, flip_x) = sprite_facing(unit.direction(), data.sprite.facing);
         let texture = self.atlas_texture(&data.sprite.atlas);
+        let (column, flip_x) = sprite_column(data.sprite.atlas, data.sprite.facing, unit.direction(), wobble);
         let params = DrawTextureParams {
             source: Some(Rect {
-                x: direction_index as f32 * TILE_SIZE,
+                x: column as f32 * TILE_SIZE,
                 y: data.sprite.row as f32 * TILE_SIZE,
                 w: TILE_SIZE,
                 h: TILE_SIZE,
@@ -125,6 +130,15 @@ fn sprite_facing(direction: Direction, facing: Facing) -> (usize, bool) {
         Facing::Fixed => (0, false),
         Facing::Directional => (direction_index(direction), direction == Direction::West),
     }
+}
+
+fn sprite_column(atlas: Atlas, facing: Facing, direction: Direction, wobble: usize) -> (usize, bool) {
+    let (dir, flip) = sprite_facing(direction, facing);
+    let stride = match atlas {
+        Atlas::Sprites => 3,
+        Atlas::Words => 1,
+    };
+    (wobble * stride + dir, flip)
 }
 
 fn get_pressed_direction() -> Option<Direction> {
