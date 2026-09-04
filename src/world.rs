@@ -69,7 +69,7 @@ impl Cell {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Grid {
     cells: Vec<Cell>,
     w: i32,

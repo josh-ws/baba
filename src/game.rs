@@ -19,6 +19,10 @@ impl Game {
         self.pack.get_level(&self.current_level)
     }
 
+    pub fn current_level_mut(&mut self) -> &mut Level {
+        self.pack.get_level_mut(&self.current_level)
+    }
+
     pub fn update(&mut self, dir: Direction) -> TurnStatus {
         let result = self.pack.get_level_mut(&self.current_level).update(dir);
         self.selected = result.selected;

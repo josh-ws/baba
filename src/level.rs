@@ -27,6 +27,7 @@ pub struct Level {
     grid: Grid,
     kind: LevelKind,
     links: HashMap<u64, String>,
+    grid_history: Vec<Grid>,
 }
 
 impl Default for Level {
@@ -36,6 +37,7 @@ impl Default for Level {
             grid: Grid::empty(0, 0),
             kind: LevelKind::Puzzle,
             links: HashMap::new(),
+            grid_history: vec![],
         }
     }
 }
@@ -80,7 +82,22 @@ impl Level {
     }
 
     pub fn update(&mut self, dir: Direction) -> TurnResult {
-        Turn::new(&mut self.grid, dir).run()
+        let before = self.grid.clone();
+        let result = Turn::new(&mut self.grid, dir).run();
+        if before != self.grid {
+            self.grid_history.push(before);
+        }
+        result
+    }
+
+    pub fn undo(&mut self) -> bool {
+        match self.grid_history.pop() {
+            Some(grid) => {
+                self.grid = grid;
+                true
+            }
+            None => false,
+        }
     }
 
     pub fn link_for(&self, selected: &[u64]) -> Option<&str> {

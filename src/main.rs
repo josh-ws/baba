@@ -42,6 +42,9 @@ async fn main() {
         if let Some(dir) = get_pressed_direction() {
             game.update(dir);
         }
+        if is_key_pressed(KeyCode::Z) {
+            game.current_level_mut().undo();
+        }
         if is_key_pressed(KeyCode::Enter) {
             game.enter_link();
         }
