@@ -157,6 +157,15 @@ impl Grid {
         None
     }
 
+    pub fn destroy_unit(&mut self, id: u64) -> bool {
+        if let Some(pos) = self.find_unit(id) {
+            self.at_mut(pos).units_mut().retain(|u| u.id() != id);
+            true
+        } else {
+            false
+        }
+    }
+
     // moves all units on `from` to `to`, that match `p`
     pub fn move_matching(&mut self, from: Pos, to: Pos, dir: Direction, p: impl Fn(&Unit) -> bool) {
         let mut units = self

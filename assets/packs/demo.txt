@@ -7,10 +7,11 @@ Kind = map
 Link = 0,2 sink
 Link = 4,2 small
 Link = 5,2 where
+Link = 6,2 test-level
 Data =
-CU IS SE .. .. ..
-.. cu .. .. .. ..
-le pa pa pa le le
+CU IS SE .. .. .. ..
+.. cu .. .. .. .. ..
+le pa pa pa le le le
 
 [sink]
 Name = Sink!
@@ -30,16 +31,8 @@ RO .. IS PU WT IS SI
 [test-level]
 Name = Test Level
 Data =
-.. .. .. .. .. .. ..
-.. .. .. BA .. .. ..
-.. .. RO IS PU .. ..
-.. .. IS YO .. .. ..
-.. .. WI .. .. .. ..
-.. .. .. .. .. .. ..
-.. .. ba .. ro .. ..
-.. .. .. .. .. .. ..
-wa wa wa wa wa wa wa
-WA IS ST .. .. .. ..
+BA IS YO WT IS DE
+.. ba .. .. wt ..
 
 [small]
 Name = Small

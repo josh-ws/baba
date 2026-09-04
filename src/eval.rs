@@ -56,6 +56,7 @@ impl<'a> Turn<'a> {
         self.move_select().then(|| self.reparse());
         self.handle_transforms().then(|| self.reparse());
         self.handle_sink().then(|| self.reparse());
+        self.handle_defeats().then(|| self.reparse());
         TurnResult::new(self.check_status(), query_selected(self.grid, &self.rules))
     }
 
@@ -113,10 +114,16 @@ impl<'a> Turn<'a> {
         let sinks = query_sinks(self.grid, &self.rules);
         let mut destroyed = false;
         for sink in sinks {
-            if let Some(pos) = self.grid.find_unit(sink) {
-                self.grid.remove_matching(pos, |unit| unit.id() == sink);
-                destroyed = true;
-            }
+            destroyed |= self.grid.destroy_unit(sink);
+        }
+        destroyed
+    }
+
+    fn handle_defeats(&mut self) -> bool {
+        let defeated = query_defeats(self.grid, &self.rules);
+        let mut destroyed = false;
+        for unit in defeated {
+            destroyed |= self.grid.destroy_unit(unit);
         }
         destroyed
     }
@@ -139,6 +146,16 @@ fn query_sinks(grid: &Grid, rules: &Rules) -> Vec<u64> {
         .filter(|c| c.units().iter().count() > 1)
         .flat_map(Cell::units)
         .map(Unit::id)
+        .collect::<Vec<u64>>()
+}
+
+fn query_defeats(grid: &Grid, rules: &Rules) -> Vec<u64> {
+    grid.cells()
+        .iter()
+        .filter(|c| cell_has(c, rules, Property::Defeat))
+        .flat_map(Cell::units)
+        .filter(|unit| rules.has(unit.noun(), Property::You))
+        .map(|u| u.id())
         .collect::<Vec<u64>>()
 }
 
@@ -428,30 +445,32 @@ mod tests {
             Direction::East,
         );
     }
-}
-
-// TMP
-#[cfg(test)]
-mod tmp {
-    use crate::{
-        eval::Turn,
-        world::{Direction::East, Grid},
-    };
 
     #[test]
-    fn sink_vs_win() {
-        for (name, src) in [
-            ("sink + win", "BA IS YO WT IS SI WT IS WI\nba wt .. .. .. .. .. .. .."),
-            ("win only  ", "BA IS YO WT IS WI .. .. ..\nba wt .. .. .. .. .. .. .."),
-        ] {
-            let mut g = Grid::from_ascii(src);
-            let r = Turn::new(&mut g, East).run();
-            println!(
-                "{name} -> {:?}   board: {}",
-                r.status,
-                g.to_ascii().lines().nth(1).unwrap()
-            );
-        }
+    fn test_defeat() {
+        assert_move_result("BA IS YO RO IS DE ba ro", "BA IS YO RO IS DE .. ro", Direction::East);
+    }
+
+    #[test]
+    fn test_self_defeat() {
+        assert_move_result("BA IS YO BA IS DE ba ..", "BA IS YO BA IS DE .. ..", Direction::East);
+    }
+
+    #[test]
+    fn test_defeat_beats_win() {
+        assert_result(
+            "BA IS YO RO IS DE RO IS WI ba ro",
+            Direction::East,
+            TurnStatus::Continue,
+        );
+    }
+
+    #[test]
+    fn test_defeat_leaves_non_you() {
+        assert_move_result(
+            "BA IS YO RO IS PU WA IS DE ba ro wa",
+            "BA IS YO RO IS PU WA IS DE .. ba ro",
+            Direction::East,
+        );
     }
 }
-// TMP
