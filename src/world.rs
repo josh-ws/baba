@@ -170,6 +170,11 @@ impl Grid {
         self.at_mut(to).units_mut().extend(units);
     }
 
+    // removes all units on `from` that match `p`
+    pub fn remove_matching(&mut self, from: Pos, p: impl Fn(&Unit) -> bool) {
+        self.at_mut(from).units_mut().retain(|unit| !p(unit));
+    }
+
     pub fn transform_unit(&mut self, id: u64, pos: Pos, into: Noun) {
         let Some(i) = self.at(pos).units().iter().position(|u| u.id() == id) else {
             return;

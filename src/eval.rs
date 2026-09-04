@@ -55,6 +55,7 @@ impl<'a> Turn<'a> {
         self.move_you().then(|| self.reparse());
         self.move_select().then(|| self.reparse());
         self.handle_transforms().then(|| self.reparse());
+        self.handle_sink().then(|| self.reparse());
         TurnResult::new(self.check_status(), query_selected(self.grid, &self.rules))
     }
 
@@ -107,6 +108,18 @@ impl<'a> Turn<'a> {
         }
         !transforms.is_empty()
     }
+
+    fn handle_sink(&mut self) -> bool {
+        let sinks = query_sinks(self.grid, &self.rules);
+        let mut destroyed = false;
+        for sink in sinks {
+            if let Some(pos) = self.grid.find_unit(sink) {
+                self.grid.remove_matching(pos, |unit| unit.id() == sink);
+                destroyed = true;
+            }
+        }
+        destroyed
+    }
 }
 
 fn query_transforms(grid: &Grid, rules: &Rules) -> Vec<Transformation> {
@@ -117,6 +130,16 @@ fn query_transforms(grid: &Grid, rules: &Rules) -> Vec<Transformation> {
         }
     }
     result
+}
+
+fn query_sinks(grid: &Grid, rules: &Rules) -> Vec<u64> {
+    grid.cells()
+        .iter()
+        .filter(|c| cell_has(c, rules, Property::Sink))
+        .filter(|c| c.units().iter().count() > 1)
+        .flat_map(Cell::units)
+        .map(Unit::id)
+        .collect::<Vec<u64>>()
 }
 
 fn transforming_into(rules: &Rules, noun: Noun) -> Option<Noun> {
@@ -380,4 +403,55 @@ mod tests {
             Direction::East,
         );
     }
+
+    #[test]
+    fn test_sink_destroys_objects() {
+        assert_move_result("WA IS SI BA IS YO ba wa", "WA IS SI BA IS YO .. ..", Direction::East);
+        assert_move_result("WA IS SI WA IS YO ba wa", "WA IS SI WA IS YO .. ..", Direction::West);
+    }
+
+    #[test]
+    fn test_sink_does_not_destroy_self() {
+        assert_move_result("WT IS SI wa", "WT IS SI wa", Direction::East);
+    }
+
+    #[test]
+    fn test_sink_beats_win() {
+        assert_result(
+            "WT IS SI WT IS WI BA IS YO ba wt",
+            Direction::East,
+            TurnStatus::Continue,
+        );
+        assert_move_result(
+            "WT IS SI WT IS WI BA IS YO ba wt",
+            "WT IS SI WT IS WI BA IS YO .. ..",
+            Direction::East,
+        );
+    }
 }
+
+// TMP
+#[cfg(test)]
+mod tmp {
+    use crate::{
+        eval::Turn,
+        world::{Direction::East, Grid},
+    };
+
+    #[test]
+    fn sink_vs_win() {
+        for (name, src) in [
+            ("sink + win", "BA IS YO WT IS SI WT IS WI\nba wt .. .. .. .. .. .. .."),
+            ("win only  ", "BA IS YO WT IS WI .. .. ..\nba wt .. .. .. .. .. .. .."),
+        ] {
+            let mut g = Grid::from_ascii(src);
+            let r = Turn::new(&mut g, East).run();
+            println!(
+                "{name} -> {:?}   board: {}",
+                r.status,
+                g.to_ascii().lines().nth(1).unwrap()
+            );
+        }
+    }
+}
+// TMP

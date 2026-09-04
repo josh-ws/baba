@@ -63,6 +63,8 @@ const UNIT_TYPES: &[UnitTypeData] = &[
     word(Text::Noun(Noun::Cursor), "CU", 9),
     word(Text::Property(Property::Select), "SE", 10),
     word(Text::Noun(Noun::Level), "LE", 11),
+    word(Text::Property(Property::Sink), "SI", 12),
+    word(Text::Noun(Noun::Water), "WT", 13),
     object(Noun::Baba, "ba", 0, Facing::Directional),
     object(Noun::Flag, "fl", 1, Facing::Fixed),
     object(Noun::Rock, "ro", 2, Facing::Fixed),
@@ -70,13 +72,11 @@ const UNIT_TYPES: &[UnitTypeData] = &[
     object(Noun::Cursor, "cu", 4, Facing::Fixed),
     object(Noun::Level, "le", 5, Facing::Fixed),
     object(Noun::Path, "pa", 6, Facing::Fixed),
+    object(Noun::Water, "wt", 7, Facing::Fixed),
 ];
 
 pub fn lookup_unit(kind: UnitKind) -> &'static UnitTypeData {
-    UNIT_TYPES
-        .iter()
-        .find(|p| p.kind == kind)
-        .expect("missing unit kind")
+    UNIT_TYPES.iter().find(|p| p.kind == kind).expect("missing unit kind")
 }
 
 pub fn search_unit(pred: impl Fn(&UnitTypeData) -> bool) -> Option<&'static UnitTypeData> {
@@ -93,6 +93,7 @@ pub enum Noun {
     Cursor,
     Level,
     Path,
+    Water,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -107,6 +108,7 @@ pub enum Property {
     Push,
     Win,
     Select,
+    Sink,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

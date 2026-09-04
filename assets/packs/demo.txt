@@ -4,13 +4,28 @@ Root = map
 [map]
 Name = Test Map
 Kind = map
-Link = 0,2 test-level
+Link = 0,2 sink
 Link = 4,2 small
 Link = 5,2 where
 Data =
 CU IS SE .. .. ..
 .. cu .. .. .. ..
 le pa pa pa le le
+
+[sink]
+Name = Sink!
+Data =
+BA IS YO .. FL IS WI
+.. .. .. .. .. .. ..
+.. ba .. .. wa wa wa
+.. .. .. .. wa .. ..
+.. .. ro .. wt .. fl
+.. .. .. .. wa .. ..
+.. .. .. .. wa wa wa
+.. .. .. .. .. .. ..
+RO .. IS PU WT IS SI
+
+
 
 [test-level]
 Name = Test Level
