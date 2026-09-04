@@ -8,7 +8,7 @@ Link = 0,2 test-level
 Link = 4,2 small
 Link = 5,2 where
 Data =
-CU IS SE LE IS ST
+CU IS SE .. .. ..
 .. cu .. .. .. ..
 le pa pa pa le le
 

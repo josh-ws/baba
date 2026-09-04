@@ -3,15 +3,11 @@ use macroquad::{
     window::next_frame,
 };
 
-use crate::{
-    eval::{TurnResult, TurnStatus},
-    pack::Levelpack,
-    view::Viewer,
-    world::Direction,
-};
+use crate::{game::Game, pack::Levelpack, view::Viewer, world::Direction};
 
 mod ascii;
 mod eval;
+mod game;
 mod level;
 mod lex;
 mod pack;
@@ -38,28 +34,21 @@ fn get_pressed_direction() -> Option<Direction> {
 
 #[macroquad::main("baba")]
 async fn main() {
-    let mut pack = Levelpack::parse(include_str!("../assets/packs/demo.txt"));
-    let mut current_level = "map".to_string();
+    let pack = Levelpack::parse(include_str!("../assets/packs/demo.txt"));
+    let mut game = Game::new(pack);
 
     let viewer = Viewer::new().await;
-    let mut turn_result = TurnResult::new(TurnStatus::Continue, vec![]);
     loop {
         if let Some(dir) = get_pressed_direction() {
-            turn_result = pack.get_level_mut(&current_level).update(dir);
+            game.update(dir);
         }
         if is_key_pressed(KeyCode::Enter) {
-            if let Some(key) = pack.get_level(&current_level).caption(&turn_result.selected) {
-                current_level = key.to_string();
-            }
+            game.enter_link();
         }
         if is_key_pressed(KeyCode::Backspace) {
-            current_level = "map".to_string();
+            game.return_to_root();
         }
-        viewer.draw(pack.get_level(&current_level), &turn_result.selected);
+        viewer.draw(&game);
         next_frame().await;
-        if turn_result.status == TurnStatus::Win {
-            println!("You win!");
-            break;
-        }
     }
 }

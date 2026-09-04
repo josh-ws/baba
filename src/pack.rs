@@ -29,6 +29,10 @@ impl Levelpack {
         pack
     }
 
+    pub fn root(&self) -> &str {
+        &self.entry_point
+    }
+
     pub fn get_level(&self, key: &str) -> &Level {
         self.levels.get(key).expect("level {key} does not exist")
     }

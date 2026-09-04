@@ -45,6 +45,10 @@ impl Level {
         Self { ..Default::default() }
     }
 
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     pub fn grid(&self) -> &Grid {
         &self.grid
     }
@@ -79,7 +83,7 @@ impl Level {
         Turn::new(&mut self.grid, dir).run()
     }
 
-    pub fn caption(&self, selected: &[u64]) -> Option<&str> {
+    pub fn link_for(&self, selected: &[u64]) -> Option<&str> {
         for unit in selected {
             if let Some(key) = self.links.get(unit) {
                 return Some(key);

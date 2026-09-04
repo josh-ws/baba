@@ -10,7 +10,7 @@ use macroquad::{
 };
 
 use crate::{
-    level::Level,
+    game::Game,
     unit::{Atlas, Facing, Unit, lookup_unit},
     world::{
         Direction::{self},
@@ -77,17 +77,17 @@ impl Viewer {
         Viewer { sprites, words }
     }
 
-    pub fn draw(&self, level: &Level, selected: &[u64]) {
-        let layout = Layout::new(level.grid(), Vec2::new(screen_width(), screen_height()));
+    pub fn draw(&self, game: &Game) {
+        let grid = game.current_level().grid();
+        let layout = Layout::new(grid, Vec2::new(screen_width(), screen_height()));
         let wobble = wobble(get_time());
         let Layout { grid_size, origin, .. } = layout;
         clear_background(BACKGROUND_COLOR);
         draw_rectangle(origin.x, origin.y, grid_size.x, grid_size.y, GRID_COLOR);
-        for (pos, unit) in level.grid().units() {
+        for (pos, unit) in grid.units() {
             self.draw_unit(unit, pos, &layout, wobble);
         }
-
-        if let Some(caption) = level.caption(selected) {
+        if let Some(caption) = game.caption() {
             draw_text(caption, 0., 40., 64., WHITE);
         }
     }
