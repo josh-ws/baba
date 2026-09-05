@@ -5,13 +5,26 @@ Root = map
 Name = Test Map
 Kind = map
 Link = 0,2 sink
+Link = 3,2 has
 Link = 4,2 small
 Link = 5,2 where
 Link = 6,2 test-level
 Data =
 CU IS SE .. .. .. ..
 .. cu .. .. .. .. ..
-le pa pa pa le le le
+le pa pa le le le le
+
+[has]
+Name = Has Test!
+Data =
+BA IS YO WT IS SI RO IS DE
+.. .. .. .. .. .. .. .. ..
+.. .. .. .. .. .. ro .. ..
+.. .. ba .. .. .. .. .. ..
+.. .. .. .. .. .. wt .. ..
+.. .. .. .. .. .. .. .. ..
+.. .. BA .. .. WA .. .. ..
+BA HA .. BA HA .. .. .. ..
 
 [sink]
 Name = Sink!

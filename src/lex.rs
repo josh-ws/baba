@@ -85,5 +85,6 @@ mod tests {
         assert_lex_match("BA IS YO .. .. .. BA IS YO", vec!["BA IS YO", "BA IS YO"]);
         assert_lex_match("BA IS YO .. BA IS YO", vec!["BA IS YO", "BA IS YO"]);
         assert_lex_match("BA IS YO ba BA IS YO", vec!["BA IS YO", "BA IS YO"]);
+        assert_lex_match("BA HA RO", vec!["BA HA RO"]);
     }
 }

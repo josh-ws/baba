@@ -61,12 +61,7 @@ impl Grid {
         }
         self.cells()
             .chunks(self.width() as usize)
-            .map(|row| {
-                row.iter()
-                    .map(|cell| cell.to_ascii())
-                    .collect::<Vec<&str>>()
-                    .join(" ")
-            })
+            .map(|row| row.iter().map(|cell| cell.to_ascii()).collect::<Vec<&str>>().join(" "))
             .collect::<Vec<String>>()
             .join("\n")
     }
@@ -92,7 +87,7 @@ impl Rule {
         let subject = UnitKind::Text(Text::Noun(self.subject)).to_ascii();
         let operator = UnitKind::Text(Text::Operator(self.operator)).to_ascii();
         let complement = match self.complement {
-            Complement::Transformation(n) => UnitKind::Text(Text::Noun(n)),
+            Complement::Noun(n) => UnitKind::Text(Text::Noun(n)),
             Complement::Property(p) => UnitKind::Text(Text::Property(p)),
         };
         format!("{subject} {operator} {}", complement.to_ascii())

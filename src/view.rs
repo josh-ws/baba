@@ -84,7 +84,7 @@ impl Viewer {
         let Layout { grid_size, origin, .. } = layout;
         clear_background(BACKGROUND_COLOR);
         draw_rectangle(origin.x, origin.y, grid_size.x, grid_size.y, GRID_COLOR);
-        for (pos, unit) in grid.units() {
+        for (pos, unit) in grid.units_with_pos() {
             self.draw_unit(unit, pos, &layout, wobble);
         }
         if let Some(caption) = game.caption() {

@@ -7,7 +7,7 @@ use crate::{
 
 #[derive(Debug, PartialEq)]
 pub enum Complement {
-    Transformation(Noun),
+    Noun(Noun),
     Property(Property),
 }
 
@@ -35,12 +35,21 @@ impl Rules {
         self.0.push(rule);
     }
 
-    pub fn has(&self, noun: Noun, property: Property) -> bool {
-        self.iter().chain(INHERENT).any(|r| {
-            r.subject == noun
-                && r.operator == Operator::Is
-                && r.complement == Complement::Property(property)
-        })
+    pub fn unit_has_prop(&self, noun: Noun, property: Property) -> bool {
+        self.iter()
+            .chain(INHERENT)
+            .any(|r| r.subject == noun && r.operator == Operator::Is && r.complement == Complement::Property(property))
+    }
+
+    pub fn unit_has(&self, noun: Noun) -> Vec<Noun> {
+        self.iter()
+            .chain(INHERENT)
+            .filter(|r| r.subject == noun && r.operator == Operator::Has)
+            .filter_map(|r| match r.complement {
+                Complement::Noun(noun) => Some(noun),
+                _ => None,
+            })
+            .collect::<Vec<Noun>>()
     }
 }
 
@@ -72,10 +81,15 @@ pub fn parse(runs: &[Run]) -> Rules {
 }
 
 fn parse_rule(window: &[Text]) -> Option<Rule> {
+    let subject = noun(window[0])?;
+    let operator = operator(window[1])?;
     Some(Rule {
-        subject: noun(window[0])?,
-        operator: operator(window[1])?,
-        complement: complement(window[2])?,
+        subject,
+        operator,
+        complement: match operator {
+            Operator::Has => complement_only_noun(window[2])?,
+            _ => complement(window[2])?,
+        },
     })
 }
 
@@ -95,8 +109,15 @@ fn operator(t: Text) -> Option<Operator> {
 
 fn complement(t: Text) -> Option<Complement> {
     match t {
-        Text::Noun(n) => Some(Complement::Transformation(n)),
+        Text::Noun(n) => Some(Complement::Noun(n)),
         Text::Property(n) => Some(Complement::Property(n)),
+        _ => None,
+    }
+}
+
+fn complement_only_noun(t: Text) -> Option<Complement> {
+    match t {
+        Text::Noun(n) => Some(Complement::Noun(n)),
         _ => None,
     }
 }
@@ -127,10 +148,7 @@ mod tests {
     #[test]
     fn parse_multi_rule() {
         assert_parse_match("BA IS RO IS BA", vec!["BA IS RO", "RO IS BA"]);
-        assert_parse_match(
-            "BA IS RO IS BA IS RO",
-            vec!["BA IS RO", "RO IS BA", "BA IS RO"],
-        );
+        assert_parse_match("BA IS RO IS BA IS RO", vec!["BA IS RO", "RO IS BA", "BA IS RO"]);
     }
 
     #[test]
@@ -140,10 +158,7 @@ mod tests {
 
     #[test]
     fn parse_non_square() {
-        assert_parse_match(
-            "BA IS YO ..\n.. .. .. ..\nRO IS BA ..",
-            vec!["BA IS YO", "RO IS BA"],
-        );
+        assert_parse_match("BA IS YO ..\n.. .. .. ..\nRO IS BA ..", vec!["BA IS YO", "RO IS BA"]);
     }
 
     #[test]
@@ -165,5 +180,16 @@ mod tests {
         assert_parse_match("", vec![]);
         assert_parse_match(".. .. ..", vec![]);
         assert_parse_match("ba ba ba", vec![]);
+    }
+
+    #[test]
+    fn parse_has() {
+        assert_parse_match("BA HA RO", vec!["BA HA RO"]);
+        assert_parse_match("BA HA RO IS YO", vec!["BA HA RO", "RO IS YO"]);
+    }
+
+    #[test]
+    fn parse_cannot_has_property() {
+        assert_parse_match("BA HA YO", vec![]);
     }
 }

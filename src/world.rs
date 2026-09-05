@@ -87,24 +87,14 @@ impl Grid {
         }
     }
 
-    pub fn cells(&self) -> &Vec<Cell> {
-        &self.cells
-    }
-
     pub fn next(&mut self) -> u64 {
         let id = self.next_id;
         self.next_id += 1;
         id
     }
 
-    pub fn iter(&self, from: Pos, dir: Direction) -> Vec<Pos> {
-        let mut points = Vec::new();
-        let mut pos = from;
-        while self.in_bounds(pos) {
-            points.push(pos);
-            pos = pos.shift(dir);
-        }
-        points
+    pub fn iter(&self, from: Pos, dir: Direction) -> impl Iterator<Item = Pos> {
+        std::iter::successors(Some(from), move |p| Some(p.shift(dir))).take_while(|p| self.in_bounds(*p))
     }
 
     pub fn at(&self, pos: Pos) -> &Cell {
@@ -135,30 +125,34 @@ impl Grid {
         Pos::new(i as i32 % self.w, i as i32 / self.w)
     }
 
-    pub fn units(&self) -> Vec<(Pos, &Unit)> {
-        let mut result = Vec::new();
-        for (i, cell) in self.cells().iter().enumerate() {
-            for unit in cell.units() {
-                result.push((self.pos_of(i), unit));
-            }
-        }
-        result
+    pub fn cells(&self) -> &[Cell] {
+        &self.cells
     }
 
-    pub fn find_unit(&self, id: u64) -> Option<Pos> {
-        for x in 0..self.width() {
-            for y in 0..self.height() {
-                let pos = Pos::new(x, y);
-                if self.at(pos).units().iter().any(|u| u.id() == id) {
-                    return Some(pos);
-                }
-            }
-        }
-        None
+    pub fn cells_with_pos(&self) -> impl Iterator<Item = (Pos, &Cell)> {
+        self.cells.iter().enumerate().map(|(i, c)| (self.pos_of(i), c))
+    }
+
+    pub fn units(&self) -> impl Iterator<Item = &Unit> {
+        self.units_with_pos().map(|(_, u)| u)
+    }
+
+    pub fn units_with_pos(&self) -> impl Iterator<Item = (Pos, &Unit)> {
+        self.cells_with_pos()
+            .flat_map(|(pos, c)| c.units().iter().map(move |u| (pos, u)))
+    }
+
+    pub fn find_unit(&self, id: u64) -> Option<(Pos, &Unit)> {
+        self.units_with_pos().find(|(_, unit)| unit.id() == id)
+    }
+
+    pub fn create_unit(&mut self, pos: Pos, kind: UnitKind) {
+        let unit = Unit::new(self.next(), kind);
+        self.at_mut(pos).units_mut().push(unit);
     }
 
     pub fn destroy_unit(&mut self, id: u64) -> bool {
-        if let Some(pos) = self.find_unit(id) {
+        if let Some((pos, _)) = self.find_unit(id) {
             self.at_mut(pos).units_mut().retain(|u| u.id() != id);
             true
         } else {
@@ -177,11 +171,6 @@ impl Grid {
             unit.set_direction(dir);
         }
         self.at_mut(to).units_mut().extend(units);
-    }
-
-    // removes all units on `from` that match `p`
-    pub fn remove_matching(&mut self, from: Pos, p: impl Fn(&Unit) -> bool) {
-        self.at_mut(from).units_mut().retain(|unit| !p(unit));
     }
 
     pub fn transform_unit(&mut self, id: u64, pos: Pos, into: Noun) {

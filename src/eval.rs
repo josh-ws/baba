@@ -1,7 +1,11 @@
 use crate::{
     lex::lex,
     rule::{Complement, Rules, parse},
-    unit::{Noun, Operator, Property, Unit},
+    unit::{
+        Noun, Operator,
+        Property::{self},
+        Unit, UnitKind,
+    },
     world::{Cell, Direction, Grid, Pos},
 };
 
@@ -76,7 +80,7 @@ impl<'a> Turn<'a> {
         let you = query_prop(self.grid, &self.rules, Property::You);
         let mut moved = false;
         for id in &you {
-            if let Some(from) = self.grid.find_unit(*id) {
+            if let Some((from, _)) = self.grid.find_unit(*id) {
                 moved |= push(self.grid, &self.rules, *id, from, self.input);
             }
         }
@@ -87,7 +91,7 @@ impl<'a> Turn<'a> {
         let select = query_prop(self.grid, &self.rules, Property::Select);
         let mut moved = false;
         for id in &select {
-            if let Some(from) = self.grid.find_unit(*id) {
+            if let Some((from, _)) = self.grid.find_unit(*id) {
                 let target = from.shift(self.input);
                 if !self.grid.in_bounds(target) {
                     continue;
@@ -107,31 +111,52 @@ impl<'a> Turn<'a> {
         for t in &transforms {
             self.grid.transform_unit(t.unit_id, t.pos, t.into);
         }
+
         !transforms.is_empty()
     }
 
     fn handle_sink(&mut self) -> bool {
         let sinks = query_sinks(self.grid, &self.rules);
-        let mut destroyed = false;
-        for sink in sinks {
-            destroyed |= self.grid.destroy_unit(sink);
-        }
-        destroyed
+        self.destroy_and_create(&sinks)
     }
 
     fn handle_defeats(&mut self) -> bool {
         let defeated = query_defeats(self.grid, &self.rules);
-        let mut destroyed = false;
-        for unit in defeated {
-            destroyed |= self.grid.destroy_unit(unit);
-        }
-        destroyed
+        self.destroy_and_create(&defeated)
     }
+
+    // destroy all units in `doomed` and resolve their HAS rules.
+    fn destroy_and_create(&mut self, doomed: &[u64]) -> bool {
+        let mut changed = false;
+        let spawns = query_has(self.grid, &self.rules, doomed);
+        for target in doomed {
+            changed |= self.grid.destroy_unit(*target);
+        }
+        for (pos, noun) in &spawns {
+            self.grid.create_unit(*pos, UnitKind::Object(*noun));
+        }
+        changed || !spawns.is_empty()
+    }
+}
+
+// query the grid, assuming all units in `doomed` will be destroyed.
+// if A HAS B and A is in `doomed`, then `B` is returned with the new position.
+fn query_has(grid: &Grid, rules: &Rules, doomed: &[u64]) -> Vec<(Pos, Noun)> {
+    let mut result = Vec::new();
+    for unit in doomed {
+        if let Some((pos, unit)) = grid.find_unit(*unit) {
+            let create = rules.unit_has(unit.noun());
+            for created_noun in create {
+                result.push((pos, created_noun));
+            }
+        }
+    }
+    result
 }
 
 fn query_transforms(grid: &Grid, rules: &Rules) -> Vec<Transformation> {
     let mut result = Vec::new();
-    for (pos, unit) in grid.units() {
+    for (pos, unit) in grid.units_with_pos() {
         if let Some(target) = transforming_into(rules, unit.noun()) {
             result.push(Transformation::new(unit.id(), pos, target));
         }
@@ -144,7 +169,7 @@ fn query_sinks(grid: &Grid, rules: &Rules) -> Vec<u64> {
         .iter()
         .filter(|c| cell_has(c, rules, Property::Sink))
         .filter(|c| c.units().iter().count() > 1)
-        .flat_map(Cell::units)
+        .flat_map(|c| c.units())
         .map(Unit::id)
         .collect::<Vec<u64>>()
 }
@@ -153,8 +178,8 @@ fn query_defeats(grid: &Grid, rules: &Rules) -> Vec<u64> {
     grid.cells()
         .iter()
         .filter(|c| cell_has(c, rules, Property::Defeat))
-        .flat_map(Cell::units)
-        .filter(|unit| rules.has(unit.noun(), Property::You))
+        .flat_map(|c| c.units())
+        .filter(|unit| rules.unit_has_prop(unit.noun(), Property::You))
         .map(|u| u.id())
         .collect::<Vec<u64>>()
 }
@@ -163,7 +188,7 @@ fn transforming_into(rules: &Rules, noun: Noun) -> Option<Noun> {
     let targets = rules
         .iter()
         .filter_map(|rule| match rule.complement {
-            Complement::Transformation(t) => {
+            Complement::Noun(t) => {
                 if rule.subject == noun && rule.operator == Operator::Is {
                     Some(t)
                 } else {
@@ -182,10 +207,8 @@ fn transforming_into(rules: &Rules, noun: Noun) -> Option<Noun> {
 
 // returns all noun units with specified property
 fn query_prop(grid: &Grid, rules: &Rules, prop: Property) -> Vec<u64> {
-    grid.cells()
-        .iter()
-        .flat_map(Cell::units)
-        .filter(|u| rules.has(u.noun(), prop))
+    grid.units()
+        .filter(|u| rules.unit_has_prop(u.noun(), prop))
         .map(|u| u.id())
         .collect::<Vec<u64>>()
 }
@@ -194,14 +217,14 @@ fn query_selected(grid: &Grid, rules: &Rules) -> Vec<u64> {
     grid.cells()
         .iter()
         .filter(|c| cell_has(c, rules, Property::Select))
-        .flat_map(Cell::units)
-        .filter(|u| u.is_object() && !rules.has(u.noun(), Property::Select))
+        .flat_map(|c| c.units())
+        .filter(|u| u.is_object() && !rules.unit_has_prop(u.noun(), Property::Select))
         .map(Unit::id)
         .collect::<Vec<u64>>()
 }
 
 fn cell_has(cell: &Cell, rules: &Rules, prop: Property) -> bool {
-    cell.units().iter().any(|u| rules.has(u.noun(), prop))
+    cell.units().iter().any(|u| rules.unit_has_prop(u.noun(), prop))
 }
 
 // check whether the grid has any cell that satisfies all props in `props`
@@ -219,7 +242,7 @@ fn push(grid: &mut Grid, rules: &Rules, mover: u64, from: Pos, dir: Direction) -
                 if i == 0 {
                     grid.move_matching(*pos, to, dir, |u| u.id() == mover);
                 } else {
-                    grid.move_matching(*pos, to, dir, |u| rules.has(u.noun(), Property::Push));
+                    grid.move_matching(*pos, to, dir, |u| rules.unit_has_prop(u.noun(), Property::Push));
                 }
             }
             true
@@ -470,6 +493,24 @@ mod tests {
         assert_move_result(
             "BA IS YO RO IS PU WA IS DE ba ro wa",
             "BA IS YO RO IS PU WA IS DE .. ba ro",
+            Direction::East,
+        );
+    }
+
+    #[test]
+    fn test_sink_creates_has_unit() {
+        assert_move_result(
+            "BA IS YO BA HA RO WT IS SI ba wt",
+            "BA IS YO BA HA RO WT IS SI .. ro",
+            Direction::East,
+        );
+    }
+
+    #[test]
+    fn test_defeat_creates_has_unit() {
+        assert_move_result(
+            "BA IS YO BA HA RO WT IS DE ba wt",
+            "BA IS YO BA HA RO WT IS DE .. ro",
             Direction::East,
         );
     }

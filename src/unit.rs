@@ -66,6 +66,7 @@ const UNIT_TYPES: &[UnitTypeData] = &[
     word(Text::Property(Property::Sink), "SI", 12),
     word(Text::Noun(Noun::Water), "WT", 13),
     word(Text::Property(Property::Defeat), "DE", 14),
+    word(Text::Operator(Operator::Has), "HA", 15),
     object(Noun::Baba, "ba", 0, Facing::Directional),
     object(Noun::Flag, "fl", 1, Facing::Fixed),
     object(Noun::Rock, "ro", 2, Facing::Fixed),
@@ -100,6 +101,7 @@ pub enum Noun {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Operator {
     Is,
+    Has,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
