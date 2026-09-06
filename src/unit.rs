@@ -12,6 +12,20 @@ pub enum Facing {
     Fixed,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum UnitGroup {
+    Liquid,
+    Ground,
+    Clutter,
+    Wall,
+    Item,
+    Creatures,
+    Characters,
+    Expressive,
+    Text,
+    Ui,
+}
+
 // Sprite data for a unit
 pub struct Sprite {
     pub atlas: Atlas,
@@ -24,6 +38,7 @@ pub struct UnitTypeData {
     pub kind: UnitKind,
     pub code: &'static str,
     pub sprite: Sprite,
+    pub group: UnitGroup,
 }
 
 const fn word(text: Text, code: &'static str, row: usize) -> UnitTypeData {
@@ -35,10 +50,11 @@ const fn word(text: Text, code: &'static str, row: usize) -> UnitTypeData {
             facing: Facing::Fixed,
             row,
         },
+        group: UnitGroup::Text,
     }
 }
 
-const fn object(noun: Noun, code: &'static str, row: usize, facing: Facing) -> UnitTypeData {
+const fn object(noun: Noun, code: &'static str, row: usize, facing: Facing, group: UnitGroup) -> UnitTypeData {
     UnitTypeData {
         kind: UnitKind::Object(noun),
         code,
@@ -47,6 +63,7 @@ const fn object(noun: Noun, code: &'static str, row: usize, facing: Facing) -> U
             facing,
             row,
         },
+        group,
     }
 }
 
@@ -67,14 +84,14 @@ const UNIT_TYPES: &[UnitTypeData] = &[
     word(Text::Noun(Noun::Water), "WT", 13),
     word(Text::Property(Property::Defeat), "DE", 14),
     word(Text::Operator(Operator::Has), "HA", 15),
-    object(Noun::Baba, "ba", 0, Facing::Directional),
-    object(Noun::Flag, "fl", 1, Facing::Fixed),
-    object(Noun::Rock, "ro", 2, Facing::Fixed),
-    object(Noun::Wall, "wa", 3, Facing::Fixed),
-    object(Noun::Cursor, "cu", 4, Facing::Fixed),
-    object(Noun::Level, "le", 5, Facing::Fixed),
-    object(Noun::Path, "pa", 6, Facing::Fixed),
-    object(Noun::Water, "wt", 7, Facing::Fixed),
+    object(Noun::Baba, "ba", 0, Facing::Directional, UnitGroup::Characters),
+    object(Noun::Flag, "fl", 1, Facing::Fixed, UnitGroup::Item),
+    object(Noun::Rock, "ro", 2, Facing::Fixed, UnitGroup::Item),
+    object(Noun::Wall, "wa", 3, Facing::Fixed, UnitGroup::Wall),
+    object(Noun::Cursor, "cu", 4, Facing::Fixed, UnitGroup::Text),
+    object(Noun::Level, "le", 5, Facing::Fixed, UnitGroup::Ground),
+    object(Noun::Path, "pa", 6, Facing::Fixed, UnitGroup::Ground),
+    object(Noun::Water, "wt", 7, Facing::Fixed, UnitGroup::Liquid),
 ];
 
 pub fn lookup_unit(kind: UnitKind) -> &'static UnitTypeData {

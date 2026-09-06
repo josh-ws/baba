@@ -21,8 +21,8 @@ use crate::{
 const WINDOW_WIDTH: u32 = 800;
 const WINDOW_HEIGHT: u32 = 820;
 const TILE_SIZE: f32 = 24.0;
-const BACKGROUND_COLOR: Color = Color::new(0.1, 0.2, 0.2, 1.);
-const GRID_COLOR: Color = Color::new(0.1, 0.25, 0.25, 1.);
+const BACKGROUND_COLOR: Color = Color::new(0.1, 0.1, 0.2, 1.);
+const GRID_COLOR: Color = Color::new(0.1, 0.1, 0.25, 1.);
 const WOBBLE_PERIOD: f64 = 0.20;
 const WOBBLE_FRAMES: usize = 3;
 
@@ -80,15 +80,30 @@ impl Viewer {
     pub fn draw(&self, game: &Game) {
         let grid = game.current_level().grid();
         let layout = Layout::new(grid, Vec2::new(screen_width(), screen_height()));
-        let wobble = wobble(get_time());
-        let Layout { grid_size, origin, .. } = layout;
+
+        self.draw_background(&layout);
+        self.draw_caption(game);
+        self.draw_units(grid, &layout);
+    }
+
+    fn draw_background(&self, layout: &Layout) {
+        let Layout { origin, grid_size, .. } = layout;
         clear_background(BACKGROUND_COLOR);
         draw_rectangle(origin.x, origin.y, grid_size.x, grid_size.y, GRID_COLOR);
-        for (pos, unit) in grid.units_with_pos() {
-            self.draw_unit(unit, pos, &layout, wobble);
-        }
+    }
+
+    fn draw_caption(&self, game: &Game) {
         if let Some(caption) = game.caption() {
             draw_text(caption, 0., 40., 64., WHITE);
+        }
+    }
+
+    fn draw_units(&self, grid: &Grid, layout: &Layout) {
+        let wobble = wobble(get_time());
+        let mut units = grid.units_with_pos().collect::<Vec<(Pos, &Unit)>>();
+        units.sort_unstable_by_key(|(_, unit)| lookup_unit(unit.kind()).group);
+        for (pos, unit) in units {
+            self.draw_unit(unit, pos, layout, wobble);
         }
     }
 
