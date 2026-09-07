@@ -37,7 +37,7 @@ async fn main() {
     let pack = Levelpack::parse(include_str!("../assets/packs/demo.txt"));
     let mut game = Game::new(pack);
 
-    let viewer = Viewer::new().await;
+    let mut viewer = Viewer::new().await;
     loop {
         if let Some(dir) = get_pressed_direction() {
             game.update(dir);
@@ -51,6 +51,7 @@ async fn main() {
         if is_key_pressed(KeyCode::Backspace) {
             game.return_to_root();
         }
+        viewer.update(&game);
         viewer.draw(&game);
         next_frame().await;
     }

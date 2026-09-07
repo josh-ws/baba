@@ -1,17 +1,22 @@
+use std::collections::HashMap;
+
 use macroquad::{
     color::{Color, WHITE},
     math::{Rect, Vec2},
     miniquad::window::set_window_size,
+    rand,
     shapes::draw_rectangle,
     text::draw_text,
     texture::{DrawTextureParams, FilterMode, Texture2D, draw_texture_ex, load_texture},
-    time::get_time,
+    time::{get_fps, get_time},
     window::{clear_background, screen_height, screen_width},
 };
 
 use crate::{
     game::Game,
-    unit::{Atlas, Facing, Unit, lookup_unit},
+    lex::lex,
+    rule::{Rules, parse},
+    unit::{Atlas, Facing, Property, Unit, lookup_unit},
     world::{
         Direction::{self},
         Grid, Pos,
@@ -26,15 +31,42 @@ const GRID_COLOR: Color = Color::new(0.1, 0.1, 0.25, 1.);
 const WOBBLE_PERIOD: f64 = 0.20;
 const WOBBLE_FRAMES: usize = 3;
 
-fn wobble(time: f64) -> usize {
-    (time / WOBBLE_PERIOD) as usize % WOBBLE_FRAMES
+const PARTICLE_SPAWN_MIN_PERIOD: f64 = 0.05;
+const PARTICLE_SPAWN_MAX_PERIOD: f64 = 0.30;
+const PARTICLE_PERIOD: f64 = 0.15;
+const PARTICLE_OFF: f32 = 0.5;
+
+enum ParticleKind {
+    Sparkle,
 }
 
-fn direction_index(direction: Direction) -> usize {
-    match direction {
-        Direction::East | Direction::West => 0,
-        Direction::South => 1,
-        Direction::North => 2,
+struct Particle {
+    tile_size: Vec2,
+    tile_offset: Vec2,
+    pos: Vec2,
+    birth: f64,
+    frames: u64,
+}
+
+impl Particle {
+    fn new(kind: ParticleKind, origin: Vec2, now: f64) -> Self {
+        match kind {
+            ParticleKind::Sparkle => Self {
+                tile_size: Vec2::new(8., 8.),
+                tile_offset: Vec2::new(0., 0.),
+                pos: origin,
+                birth: now,
+                frames: 5,
+            },
+        }
+    }
+
+    fn frame(&self, now: f64) -> u64 {
+        ((now - self.birth) / PARTICLE_PERIOD) as u64
+    }
+
+    fn alive(&self, now: f64) -> bool {
+        self.frame(now) < self.frames
     }
 }
 
@@ -57,33 +89,61 @@ impl Layout {
         }
     }
 
+    fn screen_point(&self, point: Vec2) -> Vec2 {
+        self.origin + point * self.tile
+    }
+
     fn screen_position(&self, pos: Pos) -> Vec2 {
-        self.origin + Vec2::new(pos.x as f32, pos.y as f32) * self.tile
+        self.screen_point(Vec2::new(pos.x as f32, pos.y as f32))
     }
 }
 
 pub struct Viewer {
-    sprites: Texture2D,
-    words: Texture2D,
+    textures: HashMap<String, Texture2D>,
+    particles: Vec<Particle>,
+    next_spawn: f64,
 }
 
 impl Viewer {
     pub async fn new() -> Self {
         set_window_size(WINDOW_WIDTH, WINDOW_HEIGHT);
-        let sprites = load_texture("assets/sprites.png").await.unwrap();
-        let words = load_texture("assets/words.png").await.unwrap();
-        sprites.set_filter(FilterMode::Nearest);
-        words.set_filter(FilterMode::Nearest);
-        Viewer { sprites, words }
+        let mut viewer = Viewer {
+            textures: HashMap::new(),
+            particles: Vec::new(),
+            next_spawn: 0.,
+        };
+        viewer.store_texture("sprites", "assets/sprites.png").await;
+        viewer.store_texture("words", "assets/words.png").await;
+        viewer.store_texture("particles", "assets/particles.png").await;
+        viewer
+    }
+
+    pub fn update(&mut self, game: &Game) {
+        let time = get_time();
+        if time >= self.next_spawn {
+            let grid = game.current_level().grid();
+            let rules = parse(&lex(grid));
+            self.spawn_particles(grid, &rules, time);
+            self.next_spawn = time + rand::gen_range(PARTICLE_SPAWN_MIN_PERIOD, PARTICLE_SPAWN_MAX_PERIOD);
+        }
+        self.particles.retain(|p| p.alive(time));
     }
 
     pub fn draw(&self, game: &Game) {
+        let time = get_time();
         let grid = game.current_level().grid();
         let layout = Layout::new(grid, Vec2::new(screen_width(), screen_height()));
-
         self.draw_background(&layout);
         self.draw_caption(game);
-        self.draw_units(grid, &layout);
+        self.draw_units(grid, &layout, time);
+        self.draw_particles(&layout, time);
+        draw_text(format!("{}", get_fps()), 0., 20., 32., WHITE);
+    }
+
+    async fn store_texture(&mut self, key: &str, path: &str) {
+        let texture = load_texture(path).await.unwrap();
+        texture.set_filter(FilterMode::Nearest);
+        self.textures.insert(key.to_string(), texture);
     }
 
     fn draw_background(&self, layout: &Layout) {
@@ -98,8 +158,8 @@ impl Viewer {
         }
     }
 
-    fn draw_units(&self, grid: &Grid, layout: &Layout) {
-        let wobble = wobble(get_time());
+    fn draw_units(&self, grid: &Grid, layout: &Layout, time: f64) {
+        let wobble = wobble(time);
         let mut units = grid.units_with_pos().collect::<Vec<(Pos, &Unit)>>();
         units.sort_unstable_by_key(|(_, unit)| lookup_unit(unit.kind()).group);
         for (pos, unit) in units {
@@ -128,9 +188,59 @@ impl Viewer {
 
     fn atlas_texture(&self, atlas: &Atlas) -> &Texture2D {
         match atlas {
-            Atlas::Sprites => &self.sprites,
-            Atlas::Words => &self.words,
+            Atlas::Sprites => &self.textures["sprites"],
+            Atlas::Words => &self.textures["words"],
         }
+    }
+
+    fn spawn_particles(&mut self, grid: &Grid, rules: &Rules, time: f64) {
+        let win_cells = grid.cells_with_pos().filter(|(_, cell)| {
+            cell.units()
+                .iter()
+                .any(|unit| rules.unit_has_prop(unit.noun(), Property::Win))
+        });
+        for (pos, _) in win_cells {
+            let centre = Vec2::new(pos.x as f32 + 0.5, pos.y as f32 + 0.5);
+            let jitter = Vec2::new(
+                rand::gen_range(-PARTICLE_OFF, PARTICLE_OFF),
+                rand::gen_range(-PARTICLE_OFF, PARTICLE_OFF),
+            );
+            self.particles
+                .push(Particle::new(ParticleKind::Sparkle, centre + jitter, time));
+        }
+    }
+
+    fn draw_particles(&self, layout: &Layout, time: f64) {
+        let texture = &self.textures["particles"];
+        let scale = layout.tile / TILE_SIZE;
+        for particle in &self.particles {
+            let frame = particle.frame(time).min(particle.frames - 1) as f32;
+            let dest_size = particle.tile_size * scale;
+            let params = DrawTextureParams {
+                source: Some(Rect {
+                    x: particle.tile_offset.x + frame * particle.tile_size.x,
+                    y: particle.tile_offset.y,
+                    w: particle.tile_size.x,
+                    h: particle.tile_size.y,
+                }),
+                dest_size: Some(dest_size),
+                ..Default::default()
+            };
+            let at = layout.screen_point(particle.pos) - dest_size / 2.;
+            draw_texture_ex(texture, at.x, at.y, WHITE, params);
+        }
+    }
+}
+
+fn wobble(time: f64) -> usize {
+    (time / WOBBLE_PERIOD) as usize % WOBBLE_FRAMES
+}
+
+fn direction_index(direction: Direction) -> usize {
+    match direction {
+        Direction::East | Direction::West => 0,
+        Direction::South => 1,
+        Direction::North => 2,
     }
 }
 

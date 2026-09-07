@@ -2,7 +2,13 @@ baba is a small game that aims to mimic the mechanics of "Baba is You", a game b
 The impetus is purely the technical challenge.
 Art is redrawn (poorly) by me. No assets from the actual game are used.
 
-Currently upported:
+Controls:
+- WASD for movement
+- Enter to enter a level
+- Backspace to leave a level
+- Z to undo
+
+Currently supported:
 - IS
 - YOU
 - STOP
