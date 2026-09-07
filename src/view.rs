@@ -13,6 +13,7 @@ use macroquad::{
 };
 
 use crate::{
+    eval::{Cause, Event},
     game::Game,
     lex::lex,
     rule::{Rules, parse},
@@ -33,11 +34,12 @@ const WOBBLE_FRAMES: usize = 3;
 
 const PARTICLE_SPAWN_MIN_PERIOD: f64 = 0.05;
 const PARTICLE_SPAWN_MAX_PERIOD: f64 = 0.30;
-const PARTICLE_PERIOD: f64 = 0.15;
-const PARTICLE_OFF: f32 = 0.5;
 
+#[derive(Clone, Copy)]
 enum ParticleKind {
     Sparkle,
+    Splash,
+    Explode,
 }
 
 struct Particle {
@@ -46,6 +48,7 @@ struct Particle {
     pos: Vec2,
     birth: f64,
     frames: u64,
+    period: f64,
 }
 
 impl Particle {
@@ -57,12 +60,29 @@ impl Particle {
                 pos: origin,
                 birth: now,
                 frames: 5,
+                period: 0.15,
+            },
+            ParticleKind::Splash => Self {
+                tile_size: Vec2::new(8., 8.),
+                tile_offset: Vec2::new(0., 16.),
+                pos: origin,
+                birth: now,
+                frames: 2,
+                period: 0.1,
+            },
+            ParticleKind::Explode => Self {
+                tile_size: Vec2::new(8., 8.),
+                tile_offset: Vec2::new(0., 24.),
+                pos: origin,
+                birth: now,
+                frames: 4,
+                period: 0.05,
             },
         }
     }
 
     fn frame(&self, now: f64) -> u64 {
-        ((now - self.birth) / PARTICLE_PERIOD) as u64
+        ((now - self.birth) / self.period) as u64
     }
 
     fn alive(&self, now: f64) -> bool {
@@ -99,6 +119,7 @@ impl Layout {
 }
 
 pub struct Viewer {
+    key: String,
     textures: HashMap<String, Texture2D>,
     particles: Vec<Particle>,
     next_spawn: f64,
@@ -108,6 +129,7 @@ impl Viewer {
     pub async fn new() -> Self {
         set_window_size(WINDOW_WIDTH, WINDOW_HEIGHT);
         let mut viewer = Viewer {
+            key: String::default(),
             textures: HashMap::new(),
             particles: Vec::new(),
             next_spawn: 0.,
@@ -118,13 +140,32 @@ impl Viewer {
         viewer
     }
 
-    pub fn update(&mut self, game: &Game) {
+    pub fn update(&mut self, game: &Game, events: &[Event]) {
+        let switched = game.current_key() != self.key;
+        if switched {
+            self.key = game.current_key().to_string();
+            self.particles.clear();
+        }
+
         let time = get_time();
         if time >= self.next_spawn {
             let grid = game.current_level().grid();
             let rules = parse(&lex(grid));
-            self.spawn_particles(grid, &rules, time);
+            self.spawn_ambient(grid, &rules, time);
             self.next_spawn = time + rand::gen_range(PARTICLE_SPAWN_MIN_PERIOD, PARTICLE_SPAWN_MAX_PERIOD);
+        }
+        if !switched {
+            for event in events {
+                match event {
+                    Event::Destroyed { pos, cause } => {
+                        let kind = match cause {
+                            Cause::Defeat => ParticleKind::Explode,
+                            Cause::Sink => ParticleKind::Splash,
+                        };
+                        self.burst(kind, *pos, time);
+                    }
+                }
+            }
         }
         self.particles.retain(|p| p.alive(time));
     }
@@ -193,20 +234,27 @@ impl Viewer {
         }
     }
 
-    fn spawn_particles(&mut self, grid: &Grid, rules: &Rules, time: f64) {
+    fn spawn_ambient(&mut self, grid: &Grid, rules: &Rules, time: f64) {
         let win_cells = grid.cells_with_pos().filter(|(_, cell)| {
             cell.units()
                 .iter()
                 .any(|unit| rules.unit_has_prop(unit.noun(), Property::Win))
         });
         for (pos, _) in win_cells {
-            let centre = Vec2::new(pos.x as f32 + 0.5, pos.y as f32 + 0.5);
-            let jitter = Vec2::new(
-                rand::gen_range(-PARTICLE_OFF, PARTICLE_OFF),
-                rand::gen_range(-PARTICLE_OFF, PARTICLE_OFF),
-            );
-            self.particles
-                .push(Particle::new(ParticleKind::Sparkle, centre + jitter, time));
+            self.burst(ParticleKind::Sparkle, pos, time);
+        }
+    }
+
+    fn burst(&mut self, kind: ParticleKind, pos: Pos, time: f64) {
+        let (count, offset) = match kind {
+            ParticleKind::Sparkle => (1, 0.5),
+            ParticleKind::Splash => (10, 0.5),
+            ParticleKind::Explode => (20, 0.6),
+        };
+        let centre = Vec2::new(pos.x as f32 + 0.5, pos.y as f32 + 0.5);
+        for _ in 0..count {
+            let jitter = Vec2::new(rand::gen_range(-offset, offset), rand::gen_range(-offset, offset));
+            self.particles.push(Particle::new(kind, centre + jitter, time));
         }
     }
 

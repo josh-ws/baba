@@ -1,4 +1,9 @@
-use crate::{eval::TurnStatus, level::Level, pack::Levelpack, world::Direction};
+use crate::{
+    eval::{Event, TurnResult, TurnStatus},
+    level::Level,
+    pack::Levelpack,
+    world::Direction,
+};
 
 pub struct Game {
     pack: Levelpack,
@@ -23,14 +28,18 @@ impl Game {
         self.pack.get_level_mut(&self.current_level)
     }
 
-    pub fn update(&mut self, dir: Direction) -> TurnStatus {
+    pub fn current_key(&self) -> &str {
+        &self.current_level
+    }
+
+    pub fn update(&mut self, dir: Direction) -> Vec<Event> {
         let result = self.pack.get_level_mut(&self.current_level).update(dir);
         self.selected = result.selected;
         if result.status == TurnStatus::Win {
             println!("You win!");
             self.return_to_root();
         }
-        result.status
+        result.events
     }
 
     pub fn caption(&self) -> Option<&str> {

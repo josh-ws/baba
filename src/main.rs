@@ -3,7 +3,7 @@ use macroquad::{
     window::next_frame,
 };
 
-use crate::{game::Game, pack::Levelpack, view::Viewer, world::Direction};
+use crate::{eval::TurnResult, game::Game, pack::Levelpack, view::Viewer, world::Direction};
 
 mod ascii;
 mod eval;
@@ -39,8 +39,9 @@ async fn main() {
 
     let mut viewer = Viewer::new().await;
     loop {
+        let mut events = Vec::new();
         if let Some(dir) = get_pressed_direction() {
-            game.update(dir);
+            events = game.update(dir);
         }
         if is_key_pressed(KeyCode::Z) {
             game.current_level_mut().undo();
@@ -51,7 +52,7 @@ async fn main() {
         if is_key_pressed(KeyCode::Backspace) {
             game.return_to_root();
         }
-        viewer.update(&game);
+        viewer.update(&game, &events);
         viewer.draw(&game);
         next_frame().await;
     }

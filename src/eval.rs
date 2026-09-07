@@ -15,16 +15,22 @@ pub enum TurnStatus {
     Win,
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum Cause {
+    Sink,
+    Defeat,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Event {
+    Destroyed { pos: Pos, cause: Cause },
+}
+
 #[derive(Debug, PartialEq)]
 pub struct TurnResult {
     pub status: TurnStatus,
     pub selected: Vec<u64>, // all unit ids that a SELECT unit is touching
-}
-
-impl TurnResult {
-    pub fn new(status: TurnStatus, selected: Vec<u64>) -> Self {
-        Self { status, selected }
-    }
+    pub events: Vec<Event>,
 }
 
 struct Transformation {
@@ -43,6 +49,7 @@ pub struct Turn<'a> {
     grid: &'a mut Grid,
     rules: Rules,
     input: Direction,
+    events: Vec<Event>,
 }
 
 impl<'a> Turn<'a> {
@@ -51,17 +58,22 @@ impl<'a> Turn<'a> {
             grid,
             input,
             rules: Rules::new(),
+            events: Vec::new(),
         }
     }
 
-    pub fn run(&mut self) -> TurnResult {
+    pub fn run(mut self) -> TurnResult {
         self.reparse();
         self.move_you().then(|| self.reparse());
         self.move_select().then(|| self.reparse());
         self.handle_transforms().then(|| self.reparse());
         self.handle_sink().then(|| self.reparse());
         self.handle_defeats().then(|| self.reparse());
-        TurnResult::new(self.check_status(), query_selected(self.grid, &self.rules))
+        TurnResult {
+            status: self.check_status(),
+            selected: query_selected(self.grid, &self.rules),
+            events: self.events,
+        }
     }
 
     fn check_status(&self) -> TurnStatus {
@@ -117,20 +129,23 @@ impl<'a> Turn<'a> {
 
     fn handle_sink(&mut self) -> bool {
         let sinks = query_sinks(self.grid, &self.rules);
-        self.destroy_and_create(&sinks)
+        self.destroy_and_create(&sinks, Cause::Sink)
     }
 
     fn handle_defeats(&mut self) -> bool {
         let defeated = query_defeats(self.grid, &self.rules);
-        self.destroy_and_create(&defeated)
+        self.destroy_and_create(&defeated, Cause::Defeat)
     }
 
     // destroy all units in `doomed` and resolve their HAS rules.
-    fn destroy_and_create(&mut self, doomed: &[u64]) -> bool {
+    fn destroy_and_create(&mut self, doomed: &[u64], cause: Cause) -> bool {
         let mut changed = false;
         let spawns = query_has(self.grid, &self.rules, doomed);
         for target in doomed {
-            changed |= self.grid.destroy_unit(*target);
+            if let Some((pos, _)) = self.grid.find_unit(*target) {
+                changed |= self.grid.destroy_unit(*target);
+                self.events.push(Event::Destroyed { pos, cause });
+            }
         }
         for (pos, noun) in &spawns {
             self.grid.create_unit(*pos, UnitKind::Object(*noun));
@@ -274,8 +289,8 @@ fn movement_chain(grid: &Grid, rules: &Rules, from: Pos, dir: Direction) -> Opti
 #[cfg(test)]
 mod tests {
     use crate::{
-        eval::{Turn, TurnStatus},
-        world::{Direction, Grid},
+        eval::{Cause, Event, Turn, TurnStatus},
+        world::{Direction, Grid, Pos},
     };
 
     #[track_caller]
@@ -513,5 +528,37 @@ mod tests {
             "BA IS YO BA HA RO WT IS DE .. ro",
             Direction::East,
         );
+    }
+
+    #[test]
+    fn sink_reports_destroy_event() {
+        let mut grid = Grid::from_ascii("BA IS YO WT IS SI ba wt");
+        let result = Turn::new(&mut grid, Direction::East).run();
+        assert_eq!(
+            result.events,
+            vec![
+                Event::Destroyed {
+                    pos: Pos::new(7, 0),
+                    cause: Cause::Sink,
+                },
+                Event::Destroyed {
+                    pos: Pos::new(7, 0),
+                    cause: Cause::Sink,
+                }
+            ]
+        )
+    }
+
+    #[test]
+    fn defeat_reports_destroy_event() {
+        let mut grid = Grid::from_ascii("BA IS YO WT IS DE ba wt");
+        let result = Turn::new(&mut grid, Direction::East).run();
+        assert_eq!(
+            result.events,
+            vec![Event::Destroyed {
+                pos: Pos::new(7, 0),
+                cause: Cause::Defeat,
+            },]
+        )
     }
 }
