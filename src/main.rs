@@ -3,7 +3,7 @@ use macroquad::{
     window::next_frame,
 };
 
-use crate::{eval::TurnResult, game::Game, pack::Levelpack, view::Viewer, world::Direction};
+use crate::{game::Game, pack::Levelpack, view::Viewer, world::Direction};
 
 mod ascii;
 mod eval;
@@ -51,6 +51,14 @@ async fn main() {
         }
         if is_key_pressed(KeyCode::Backspace) {
             game.return_to_root();
+        }
+        if is_key_pressed(KeyCode::F5) {
+            match std::fs::read_to_string("assets/packs/demo.txt") {
+                Ok(src) => {
+                    game.reload(&src);
+                }
+                Err(e) => eprintln!("reload failed: {e}"),
+            }
         }
         viewer.update(&game, &events);
         viewer.draw(&game);

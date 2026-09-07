@@ -20,6 +20,13 @@ impl Game {
         }
     }
 
+    pub fn reload(&mut self, src: &str) {
+        self.pack = Levelpack::parse(src);
+        if !self.pack.has_level(&self.current_level) {
+            self.return_to_root();
+        }
+    }
+
     pub fn current_level(&self) -> &Level {
         self.pack.get_level(&self.current_level)
     }

@@ -29,6 +29,10 @@ impl Levelpack {
         pack
     }
 
+    pub fn has_level(&self, name: &str) -> bool {
+        self.levels.contains_key(name)
+    }
+
     pub fn root(&self) -> &str {
         &self.entry_point
     }
