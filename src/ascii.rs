@@ -22,10 +22,15 @@ impl UnitKind {
 
 impl Cell {
     #[cfg(test)]
-    pub fn to_ascii(&self) -> &'static str {
-        match self.units().last() {
-            Some(u) => u.kind().to_ascii(),
-            None => "..",
+    pub fn to_ascii(&self) -> String {
+        if self.units().is_empty() {
+            "..".to_string()
+        } else {
+            self.units()
+                .iter()
+                .map(|unit| unit.kind().to_ascii())
+                .collect::<Vec<&str>>()
+                .join("/")
         }
     }
 }
@@ -41,14 +46,16 @@ impl Grid {
         let w = rows.first().map_or(0, |r| r.len()) as i32;
         let mut grid = Self::empty(w, h);
         for (y, row) in rows.iter().enumerate() {
-            for (x, code) in row.iter().enumerate() {
-                if *code == ".." {
+            for (x, stack) in row.iter().enumerate() {
+                if *stack == ".." {
                     continue;
                 }
-                let id = grid.next();
-                grid.at_mut(Pos::new(x as i32, y as i32))
-                    .units_mut()
-                    .push(Unit::new(id, UnitKind::from_ascii(code)));
+                for code in stack.split("/") {
+                    let id = grid.next();
+                    grid.at_mut(Pos::new(x as i32, y as i32))
+                        .units_mut()
+                        .push(Unit::new(id, UnitKind::from_ascii(code)));
+                }
             }
         }
         grid
@@ -61,7 +68,12 @@ impl Grid {
         }
         self.cells()
             .chunks(self.width() as usize)
-            .map(|row| row.iter().map(|cell| cell.to_ascii()).collect::<Vec<&str>>().join(" "))
+            .map(|row| {
+                row.iter()
+                    .map(|cell| cell.to_ascii())
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            })
             .collect::<Vec<String>>()
             .join("\n")
     }
@@ -111,5 +123,10 @@ mod tests {
     fn ascii_round_trip() {
         assert_round_trip("BA IS YO .. ba");
         assert_round_trip(".. BA IS YO ..\nBA IS YO .. ..\n.. .. BA IS YO");
+    }
+
+    #[test]
+    fn ascii_stacked_round_trip() {
+        assert_round_trip("ba/BA IS YO .. wa/ro");
     }
 }

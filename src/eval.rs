@@ -336,7 +336,7 @@ mod tests {
 
     #[test]
     fn select_can_move_onto_objects() {
-        assert_move_result("cu ba CU IS SE", ".. cu CU IS SE", Direction::East);
+        assert_move_result("cu ba CU IS SE", ".. ba/cu CU IS SE", Direction::East);
     }
 
     #[test]
@@ -348,12 +348,12 @@ mod tests {
     fn select_ignores_move_rules() {
         assert_move_result(
             "CU IS SE BA IS PU cu ba ..",
-            "CU IS SE BA IS PU .. cu ..",
+            "CU IS SE BA IS PU .. ba/cu ..",
             Direction::East,
         );
         assert_move_result(
             "CU IS SE BA IS ST cu ba ..",
-            "CU IS SE BA IS ST .. cu ..",
+            "CU IS SE BA IS ST .. ba/cu ..",
             Direction::East,
         );
     }
@@ -406,7 +406,7 @@ mod tests {
     fn test_defeat_leaves_non_you() {
         assert_move_result(
             "BA IS YO RO IS PU WA IS DE ba ro wa",
-            "BA IS YO RO IS PU WA IS DE .. ba ro",
+            "BA IS YO RO IS PU WA IS DE .. ba wa/ro",
             Direction::East,
         );
     }
@@ -424,7 +424,7 @@ mod tests {
     fn test_defeat_creates_has_unit() {
         assert_move_result(
             "BA IS YO BA HA RO WT IS DE ba wt",
-            "BA IS YO BA HA RO WT IS DE .. ro",
+            "BA IS YO BA HA RO WT IS DE .. wt/ro",
             Direction::East,
         );
     }
@@ -459,5 +459,19 @@ mod tests {
                 cause: Cause::Defeat,
             },]
         )
+    }
+
+    #[test]
+    fn stacked_transform() {
+        assert_move_result("RO IS BA ro/wa", "RO IS BA ba/wa", Direction::East);
+    }
+
+    #[test]
+    fn stacked_push_only_pushes_pushable() {
+        assert_move_result(
+            "BA IS YO RO IS PU ba ro/fl ..",
+            "BA IS YO RO IS PU .. fl/ba ro",
+            Direction::East,
+        );
     }
 }

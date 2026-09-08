@@ -212,4 +212,35 @@ mod tests {
     fn parse_cannot_has_property() {
         assert_parse_match("BA HA YO", vec![]);
     }
+
+    #[test]
+    fn parse_ignores_invalid_stacked_rules() {
+        assert_parse_match("BA/YO IS RO", vec!["BA IS RO"]);
+        assert_parse_match("BA IS/YO RO", vec!["BA IS RO"]);
+        assert_parse_match("BA IS RO/YO/IS", vec!["BA IS RO", "BA IS YO"]);
+    }
+
+    #[test]
+    fn parse_handles_stacked_permutations() {
+        assert_parse_match("BA/RO IS YO/WI", vec!["BA IS YO", "BA IS WI", "RO IS YO", "RO IS WI"]);
+    }
+
+    #[test]
+    fn parse_complement_split() {
+        assert_parse_match("BA IS/HA RO", vec!["BA IS RO", "BA HA RO"]);
+        assert_parse_match("BA IS/HA YO", vec!["BA IS YO"]);
+    }
+
+    #[test]
+    fn parse_stacked_cell_mid_run() {
+        assert_parse_match("BA IS/RO IS YO", vec!["RO IS YO"]);
+    }
+
+    #[test]
+    fn parse_two_rules_two_axes() {
+        assert_parse_match(
+            ".. BA ..\nRO IS/HA BA\n.. RO ..",
+            vec!["RO IS BA", "RO HA BA", "BA IS RO", "BA HA RO"],
+        );
+    }
 }

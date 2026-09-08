@@ -97,4 +97,14 @@ mod tests {
         assert_lex_match("BA IS YO ba BA IS YO", vec!["BA IS YO", "BA IS YO"]);
         assert_lex_match("BA HA RO", vec!["BA HA RO"]);
     }
+
+    #[test]
+    fn lex_stacked_text() {
+        assert_lex_match("BA/RO IS/HA YO/RO", vec!["BA/RO IS/HA YO/RO"]);
+    }
+
+    #[test]
+    fn lex_stacked_text_dedupes() {
+        assert_lex_match("BA/BA IS YO", vec!["BA IS YO"]);
+    }
 }
