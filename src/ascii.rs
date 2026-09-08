@@ -70,11 +70,15 @@ impl Grid {
 impl Run {
     #[cfg(test)]
     pub fn to_ascii(&self) -> String {
-        self.words()
+        self.slots()
             .iter()
-            .map(|f| UnitKind::Text(*f))
-            .map(|f| f.to_ascii().to_string())
-            .collect::<Vec<String>>()
+            .map(|slot| {
+                slot.iter()
+                    .map(|t| UnitKind::Text(*t).to_ascii())
+                    .collect::<Vec<_>>()
+                    .join("/")
+            })
+            .collect::<Vec<_>>()
             .join(" ")
     }
 }

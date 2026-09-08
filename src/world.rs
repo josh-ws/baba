@@ -50,14 +50,18 @@ impl Cell {
         Self { units: Vec::new() }
     }
 
-    pub fn first_word(&self) -> Option<Text> {
-        self.units
-            .iter()
-            .filter_map(|f| match f.kind() {
-                UnitKind::Object(_) => None,
-                UnitKind::Text(t) => Some(t),
-            })
-            .next_back()
+    pub fn words(&self) -> Vec<Text> {
+        let mut out = Vec::new();
+        let words = self.units.iter().filter_map(|unit| match unit.kind() {
+            UnitKind::Text(t) => Some(t),
+            UnitKind::Object(_) => None,
+        });
+        for word in words {
+            if !out.contains(&word) {
+                out.push(word);
+            }
+        }
+        out
     }
 
     pub fn units(&self) -> &Vec<Unit> {

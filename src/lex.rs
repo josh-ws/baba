@@ -5,18 +5,28 @@ use crate::{
 
 const MIN_RULE_LENGTH: usize = 3;
 
+pub type Slot = Vec<Text>;
+
 #[derive(Debug)]
 pub struct Run {
-    words: Vec<Text>,
+    slots: Vec<Slot>,
 }
 
 impl Run {
     pub fn new() -> Self {
-        Self { words: Vec::new() }
+        Self { slots: Vec::new() }
     }
 
-    pub fn words(&self) -> &Vec<Text> {
-        &self.words
+    pub fn len(&self) -> usize {
+        self.slots.len()
+    }
+
+    pub fn slot(&self, i: usize) -> Option<&[Text]> {
+        self.slots.get(i).map(Vec::as_slice)
+    }
+
+    pub fn slots(&self) -> &Vec<Slot> {
+        &self.slots
     }
 }
 
@@ -24,17 +34,17 @@ fn scan_line(grid: &Grid, start: Pos, dir: Direction) -> Vec<Run> {
     let mut runs = Vec::new();
     let mut current_run = Run::new();
     for pos in grid.iter(start, dir) {
-        match grid.at(pos).first_word() {
-            Some(word) => current_run.words.push(word),
-            None => {
-                if !current_run.words.is_empty() {
-                    runs.push(current_run);
-                    current_run = Run::new();
-                }
+        let words = grid.at(pos).words();
+        if words.is_empty() {
+            if current_run.len() > 0 {
+                runs.push(current_run);
+                current_run = Run::new();
             }
+        } else {
+            current_run.slots.push(words);
         }
     }
-    if !current_run.words.is_empty() {
+    if current_run.len() > 0 {
         runs.push(current_run);
     }
     runs
@@ -48,7 +58,7 @@ pub fn lex(grid: &Grid) -> Vec<Run> {
     for x in 0..grid.width() {
         runs.extend(scan_line(grid, Pos::new(x, 0), Direction::South));
     }
-    runs.retain(|f| f.words.len() >= MIN_RULE_LENGTH);
+    runs.retain(|f| f.slots.len() >= MIN_RULE_LENGTH);
     runs
 }
 

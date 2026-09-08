@@ -68,11 +68,21 @@ pub struct Rule {
     pub complement: Complement,
 }
 
+impl Rule {
+    fn new(subject: Noun, operator: Operator, complement: Complement) -> Self {
+        Self {
+            subject,
+            operator,
+            complement,
+        }
+    }
+}
+
 pub fn parse(runs: &[Run]) -> Rules {
     let mut rules = Rules::new();
     for run in runs {
-        for window in run.words().windows(3) {
-            if let Some(rule) = parse_rule(window) {
+        for start in 0..run.len() {
+            for (rule, _) in rule_at(run, start) {
                 rules.add(rule);
             }
         }
@@ -80,45 +90,55 @@ pub fn parse(runs: &[Run]) -> Rules {
     rules
 }
 
-fn parse_rule(window: &[Text]) -> Option<Rule> {
-    let subject = noun(window[0])?;
-    let operator = operator(window[1])?;
-    Some(Rule {
-        subject,
-        operator,
-        complement: match operator {
-            Operator::Has => complement_only_noun(window[2])?,
-            _ => complement(window[2])?,
-        },
-    })
+fn rule_at(run: &Run, i: usize) -> Vec<(Rule, usize)> {
+    let mut out = Vec::new();
+    for (subject, j) in noun_at(run, i) {
+        for (operator, k) in operator_at(run, j) {
+            for (complement, l) in complement_at(run, k, operator) {
+                out.push((Rule::new(subject, operator, complement), l));
+            }
+        }
+    }
+    out
 }
 
-fn noun(t: Text) -> Option<Noun> {
-    match t {
-        Text::Noun(n) => Some(n),
-        _ => None,
+fn noun_at(run: &Run, i: usize) -> Vec<(Noun, usize)> {
+    match run.slot(i) {
+        Some(t) => t
+            .iter()
+            .filter_map(|t| match t {
+                Text::Noun(n) => Some((*n, i + 1)),
+                _ => None,
+            })
+            .collect(),
+        None => Vec::new(),
     }
 }
 
-fn operator(t: Text) -> Option<Operator> {
-    match t {
-        Text::Operator(o) => Some(o),
-        _ => None,
+fn operator_at(run: &Run, i: usize) -> Vec<(Operator, usize)> {
+    match run.slot(i) {
+        Some(t) => t
+            .iter()
+            .filter_map(|t| match t {
+                Text::Operator(n) => Some((*n, i + 1)),
+                _ => None,
+            })
+            .collect(),
+        None => Vec::new(),
     }
 }
 
-fn complement(t: Text) -> Option<Complement> {
-    match t {
-        Text::Noun(n) => Some(Complement::Noun(n)),
-        Text::Property(n) => Some(Complement::Property(n)),
-        _ => None,
-    }
-}
-
-fn complement_only_noun(t: Text) -> Option<Complement> {
-    match t {
-        Text::Noun(n) => Some(Complement::Noun(n)),
-        _ => None,
+fn complement_at(run: &Run, i: usize, op: Operator) -> Vec<(Complement, usize)> {
+    match run.slot(i) {
+        Some(t) => t
+            .iter()
+            .filter_map(|t| match (t, op) {
+                (Text::Noun(n), _) => Some((Complement::Noun(*n), i + 1)),
+                (Text::Property(p), Operator::Is) => Some((Complement::Property(*p), i + 1)),
+                _ => None,
+            })
+            .collect(),
+        None => Vec::new(),
     }
 }
 
