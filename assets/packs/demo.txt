@@ -50,11 +50,8 @@ BA IS YO WT IS DE
 [small]
 Name = Small
 Data =
-BA IS YO .. ..
-.. WA IS ST ..
-.. .. .. FL ..
-wa .. .. .. ..
-FL IS WI .. ba
+KE IS YO FL IS WI
+.. ke .. .. fl ..
 
 [where]
 Name = Where do I go?

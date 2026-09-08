@@ -84,6 +84,7 @@ const UNIT_TYPES: &[UnitTypeData] = &[
     word(Text::Noun(Noun::Water), "WT", 13),
     word(Text::Property(Property::Defeat), "DE", 14),
     word(Text::Operator(Operator::Has), "HA", 15),
+    word(Text::Noun(Noun::Key), "KE", 16),
     object(Noun::Baba, "ba", 0, Facing::Directional, UnitGroup::Characters),
     object(Noun::Flag, "fl", 1, Facing::Fixed, UnitGroup::Item),
     object(Noun::Rock, "ro", 2, Facing::Fixed, UnitGroup::Item),
@@ -92,6 +93,7 @@ const UNIT_TYPES: &[UnitTypeData] = &[
     object(Noun::Level, "le", 5, Facing::Fixed, UnitGroup::Ground),
     object(Noun::Path, "pa", 6, Facing::Fixed, UnitGroup::Ground),
     object(Noun::Water, "wt", 7, Facing::Fixed, UnitGroup::Liquid),
+    object(Noun::Key, "ke", 8, Facing::Fixed, UnitGroup::Item),
 ];
 
 pub fn lookup_unit(kind: UnitKind) -> &'static UnitTypeData {
@@ -113,6 +115,7 @@ pub enum Noun {
     Level,
     Path,
     Water,
+    Key,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
