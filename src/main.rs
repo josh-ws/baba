@@ -11,6 +11,7 @@ mod game;
 mod level;
 mod lex;
 mod pack;
+mod query;
 mod rule;
 mod unit;
 mod view;

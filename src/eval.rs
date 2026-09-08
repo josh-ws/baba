@@ -1,12 +1,15 @@
 use crate::{
     lex::lex,
-    rule::{Complement, Rules, parse},
-    unit::{
-        Noun, Operator,
-        Property::{self},
-        Unit, UnitKind,
+    query::{
+        UnitRef, any_cell_has, cell_has, query_defeat, query_has, query_is_noun, query_is_property, query_selected,
+        query_sink,
     },
-    world::{Cell, Direction, Grid, Pos},
+    rule::{Rules, parse},
+    unit::{
+        Property::{self},
+        UnitKind,
+    },
+    world::{Direction, Grid, Pos},
 };
 
 #[derive(Debug, PartialEq)]
@@ -31,18 +34,6 @@ pub struct TurnResult {
     pub status: TurnStatus,
     pub selected: Vec<u64>, // all unit ids that a SELECT unit is touching
     pub events: Vec<Event>,
-}
-
-struct Transformation {
-    unit_id: u64,
-    pos: Pos,
-    into: Noun,
-}
-
-impl Transformation {
-    fn new(unit_id: u64, pos: Pos, into: Noun) -> Self {
-        Transformation { unit_id, pos, into }
-    }
 }
 
 pub struct Turn<'a> {
@@ -71,13 +62,16 @@ impl<'a> Turn<'a> {
         self.handle_defeats().then(|| self.reparse());
         TurnResult {
             status: self.check_status(),
-            selected: query_selected(self.grid, &self.rules),
+            selected: query_selected(&self.rules, self.grid)
+                .iter()
+                .map(|unit_ref| unit_ref.unit_id)
+                .collect::<Vec<u64>>(),
             events: self.events,
         }
     }
 
     fn check_status(&self) -> TurnStatus {
-        if any_cell_has(self.grid, &self.rules, &[Property::Win, Property::You]) {
+        if any_cell_has(&self.rules, self.grid, &[Property::Win, Property::You]) {
             TurnStatus::Win
         } else {
             TurnStatus::Continue
@@ -89,164 +83,69 @@ impl<'a> Turn<'a> {
     }
 
     fn move_you(&mut self) -> bool {
-        let you = query_prop(self.grid, &self.rules, Property::You);
+        let you = query_is_property(&self.rules, self.grid, Property::You);
         let mut moved = false;
-        for id in &you {
-            if let Some((from, _)) = self.grid.find_unit(*id) {
-                moved |= push(self.grid, &self.rules, *id, from, self.input);
+        for unit in &you {
+            if let Some((from, _)) = self.grid.find_unit(unit.unit_id) {
+                moved |= push(self.grid, &self.rules, unit.unit_id, from, self.input);
             }
         }
         moved
     }
 
     fn move_select(&mut self) -> bool {
-        let select = query_prop(self.grid, &self.rules, Property::Select);
+        let select = query_is_property(&self.rules, self.grid, Property::Select);
         let mut moved = false;
-        for id in &select {
-            if let Some((from, _)) = self.grid.find_unit(*id) {
-                let target = from.shift(self.input);
-                if !self.grid.in_bounds(target) {
-                    continue;
-                }
-                if !self.grid.at(target).units().iter().any(|f| f.is_object()) {
-                    continue;
-                }
-                self.grid.move_matching(from, target, self.input, |p| p.id() == *id);
-                moved = true;
+        for unit in &select {
+            let target = unit.pos.shift(self.input);
+            if !self.grid.in_bounds(target) {
+                continue;
             }
+            if !self.grid.at(target).units().iter().any(|f| f.is_object()) {
+                continue;
+            }
+            self.grid
+                .move_matching(unit.pos, target, self.input, |p| p.id() == unit.unit_id);
+            moved = true;
         }
         moved
     }
 
     fn handle_transforms(&mut self) -> bool {
-        let transforms = query_transforms(self.grid, &self.rules);
+        let transforms = query_is_noun(&self.rules, self.grid);
         for t in &transforms {
-            self.grid.transform_unit(t.unit_id, t.pos, t.into);
+            self.grid.transform_unit(t.unit_id, t.pos, t.into_noun);
         }
 
         !transforms.is_empty()
     }
 
     fn handle_sink(&mut self) -> bool {
-        let sinks = query_sinks(self.grid, &self.rules);
+        let sinks = query_sink(&self.rules, self.grid);
         self.destroy_and_create(&sinks, Cause::Sink)
     }
 
     fn handle_defeats(&mut self) -> bool {
-        let defeated = query_defeats(self.grid, &self.rules);
+        let defeated = query_defeat(&self.rules, self.grid);
         self.destroy_and_create(&defeated, Cause::Defeat)
     }
 
     // destroy all units in `doomed` and resolve their HAS rules.
-    fn destroy_and_create(&mut self, doomed: &[u64], cause: Cause) -> bool {
+    fn destroy_and_create(&mut self, doomed: &[UnitRef], cause: Cause) -> bool {
         let mut changed = false;
-        let spawns = query_has(self.grid, &self.rules, doomed);
+        let ids = doomed.iter().map(|u| u.unit_id).collect::<Vec<u64>>();
+        let spawns = query_has(&self.rules, self.grid, &ids);
         for target in doomed {
-            if let Some((pos, _)) = self.grid.find_unit(*target) {
-                changed |= self.grid.destroy_unit(*target);
-                self.events.push(Event::Destroyed { pos, cause });
+            if self.grid.destroy_unit(target.unit_id) {
+                changed = true;
+                self.events.push(Event::Destroyed { pos: target.pos, cause });
             }
         }
-        for (pos, noun) in &spawns {
-            self.grid.create_unit(*pos, UnitKind::Object(*noun));
+        for new in &spawns {
+            self.grid.create_unit(new.pos, UnitKind::Object(new.into_noun));
         }
         changed || !spawns.is_empty()
     }
-}
-
-// query the grid, assuming all units in `doomed` will be destroyed.
-// if A HAS B and A is in `doomed`, then `B` is returned with the new position.
-fn query_has(grid: &Grid, rules: &Rules, doomed: &[u64]) -> Vec<(Pos, Noun)> {
-    let mut result = Vec::new();
-    for unit in doomed {
-        if let Some((pos, unit)) = grid.find_unit(*unit) {
-            let create = rules.unit_has(unit.noun());
-            for created_noun in create {
-                result.push((pos, created_noun));
-            }
-        }
-    }
-    result
-}
-
-fn query_transforms(grid: &Grid, rules: &Rules) -> Vec<Transformation> {
-    let mut result = Vec::new();
-    for (pos, unit) in grid.units_with_pos() {
-        if let Some(target) = transforming_into(rules, unit.noun()) {
-            result.push(Transformation::new(unit.id(), pos, target));
-        }
-    }
-    result
-}
-
-fn query_sinks(grid: &Grid, rules: &Rules) -> Vec<u64> {
-    grid.cells()
-        .iter()
-        .filter(|c| cell_has(c, rules, Property::Sink))
-        .filter(|c| c.units().iter().count() > 1)
-        .flat_map(|c| c.units())
-        .map(Unit::id)
-        .collect::<Vec<u64>>()
-}
-
-fn query_defeats(grid: &Grid, rules: &Rules) -> Vec<u64> {
-    grid.cells()
-        .iter()
-        .filter(|c| cell_has(c, rules, Property::Defeat))
-        .flat_map(|c| c.units())
-        .filter(|unit| rules.unit_has_prop(unit.noun(), Property::You))
-        .map(|u| u.id())
-        .collect::<Vec<u64>>()
-}
-
-fn transforming_into(rules: &Rules, noun: Noun) -> Option<Noun> {
-    let targets = rules
-        .iter()
-        .filter_map(|rule| match rule.complement {
-            Complement::Noun(t) => {
-                if rule.subject == noun && rule.operator == Operator::Is {
-                    Some(t)
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        })
-        .collect::<Vec<Noun>>();
-
-    if targets.contains(&noun) {
-        return None;
-    }
-    targets.first().copied() // TODO(jw) explicitly returning the first transformation here, we should handle all of them
-}
-
-// returns all noun units with specified property
-fn query_prop(grid: &Grid, rules: &Rules, prop: Property) -> Vec<u64> {
-    grid.units()
-        .filter(|u| rules.unit_has_prop(u.noun(), prop))
-        .map(|u| u.id())
-        .collect::<Vec<u64>>()
-}
-
-fn query_selected(grid: &Grid, rules: &Rules) -> Vec<u64> {
-    grid.cells()
-        .iter()
-        .filter(|c| cell_has(c, rules, Property::Select))
-        .flat_map(|c| c.units())
-        .filter(|u| u.is_object() && !rules.unit_has_prop(u.noun(), Property::Select))
-        .map(Unit::id)
-        .collect::<Vec<u64>>()
-}
-
-fn cell_has(cell: &Cell, rules: &Rules, prop: Property) -> bool {
-    cell.units().iter().any(|u| rules.unit_has_prop(u.noun(), prop))
-}
-
-// check whether the grid has any cell that satisfies all props in `props`
-fn any_cell_has(grid: &Grid, rules: &Rules, props: &[Property]) -> bool {
-    grid.cells()
-        .iter()
-        .any(|c| props.iter().all(|p| cell_has(c, rules, *p)))
 }
 
 fn push(grid: &mut Grid, rules: &Rules, mover: u64, from: Pos, dir: Direction) -> bool {
@@ -275,10 +174,10 @@ fn movement_chain(grid: &Grid, rules: &Rules, from: Pos, dir: Direction) -> Opti
         if !grid.in_bounds(next) {
             return None;
         }
-        if cell_has(grid.at(next), rules, Property::Stop) {
+        if cell_has(rules, grid.at(next), &[Property::Stop]) {
             return None;
         }
-        if !cell_has(grid.at(next), rules, Property::Push) {
+        if !cell_has(rules, grid.at(next), &[Property::Push]) {
             return Some(cells_to_move);
         }
         cells_to_move.push(next);

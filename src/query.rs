@@ -1,0 +1,140 @@
+use crate::{
+    rule::{Complement, Rules},
+    unit::{Noun, Operator, Property, Unit},
+    world::{Cell, Grid, Pos},
+};
+
+pub struct UnitRef {
+    pub unit_id: u64,
+    pub pos: Pos, // position at the point of query. May be stale
+}
+
+impl UnitRef {
+    fn new(unit_id: u64, pos: Pos) -> Self {
+        Self { unit_id, pos }
+    }
+}
+
+pub struct CreateUnitRef {
+    pub unit_id: u64,
+    pub pos: Pos,
+    pub into_noun: Noun,
+}
+
+impl CreateUnitRef {
+    fn new(unit_id: u64, pos: Pos, into_noun: Noun) -> Self {
+        Self {
+            unit_id,
+            pos,
+            into_noun,
+        }
+    }
+}
+
+/// query the grid for A HAS B where A is in `doomed`. All new units created by
+/// HAS will be returned along with their position.
+pub fn query_has(rules: &Rules, grid: &Grid, doomed: &[u64]) -> Vec<CreateUnitRef> {
+    let mut result = Vec::new();
+    let items = doomed.iter().filter_map(|id| grid.find_unit(*id));
+    for (pos, unit) in items {
+        let create = rules.unit_has(unit.noun());
+        for created in create {
+            result.push(CreateUnitRef::new(unit.id(), pos, created));
+        }
+    }
+    result
+}
+
+/// query the grid for all A IS B and return all units to be transformed
+pub fn query_is_noun(rules: &Rules, grid: &Grid) -> Vec<CreateUnitRef> {
+    let transforms = rules
+        .iter()
+        .filter_map(|r| match r.complement {
+            Complement::Noun(n) if r.operator == Operator::Is => Some((r.subject, n)),
+            _ => None,
+        })
+        .collect::<Vec<(Noun, Noun)>>();
+
+    let mut result = Vec::new();
+    for (pos, unit) in grid.units_with_pos() {
+        let is_self = transforms.iter().any(|(from, to)| *from == unit.noun() && from == to);
+        if is_self {
+            continue; // e.g. BABA IS BABA. Skip transforms
+        }
+        for (_, to) in transforms.iter().filter(|(from, _)| *from == unit.noun()) {
+            result.push(CreateUnitRef::new(unit.id(), pos, *to));
+        }
+    }
+    result
+}
+
+/// query the grid for all `A` where A IS <PROP>
+pub fn query_is_property(rules: &Rules, grid: &Grid, prop: Property) -> Vec<UnitRef> {
+    grid.units_with_pos()
+        .filter(|(_, unit)| rules.unit_has_prop(unit.noun(), prop))
+        .map(|(pos, unit)| UnitRef::new(unit.id(), pos))
+        .collect::<Vec<UnitRef>>()
+}
+
+/// query the grid for all `A` and `B` where A and B share a cell, and A|B IS SINK
+pub fn query_sink(rules: &Rules, grid: &Grid) -> Vec<UnitRef> {
+    query_cells(
+        rules,
+        grid,
+        |r, c| c.units().len() > 1 && cell_has(r, c, &[Property::Sink]),
+        |_, _| true,
+    )
+}
+
+/// query the grid for all `A` that shares a cell with some `B`, where A IS YOU and B IS DEFEAT
+/// in other words, all `YOU` units that should be defeated
+pub fn query_defeat(rules: &Rules, grid: &Grid) -> Vec<UnitRef> {
+    query_cells(
+        rules,
+        grid,
+        |r, c| cell_has(r, c, &[Property::Defeat]),
+        |r, u| r.unit_has_prop(u.noun(), Property::You),
+    )
+}
+
+/// query the grid for all nouns `A` overlapping `B` where B IS SELECT
+pub fn query_selected(rules: &Rules, grid: &Grid) -> Vec<UnitRef> {
+    query_cells(
+        rules,
+        grid,
+        |r, c| cell_has(r, c, &[Property::Select]),
+        |r, u| u.is_object() && !r.unit_has_prop(u.noun(), Property::Select),
+    )
+}
+
+/// helper function. filter down the cells, then the units in those cells.
+/// return all matching units.
+pub fn query_cells(
+    rules: &Rules,
+    grid: &Grid,
+    cell_pred: impl Fn(&Rules, &Cell) -> bool,
+    unit_pred: impl Fn(&Rules, &Unit) -> bool,
+) -> Vec<UnitRef> {
+    grid.cells_with_pos()
+        .filter(|(_, cell)| cell_pred(rules, cell))
+        .flat_map(|(pos, cell)| cell.units().iter().map(move |u| (pos, u)))
+        .filter(|(_, unit)| unit_pred(rules, unit))
+        .map(|(pos, unit)| UnitRef::new(unit.id(), pos))
+        .collect::<Vec<UnitRef>>()
+}
+
+fn cell_has_prop(rules: &Rules, cell: &Cell, prop: Property) -> bool {
+    cell.units().iter().any(|u| rules.unit_has_prop(u.noun(), prop))
+}
+
+/// query the specified cell and check if any unit satisifes all props in `props`
+pub fn cell_has(rules: &Rules, cell: &Cell, props: &[Property]) -> bool {
+    props.iter().all(|p| cell_has_prop(rules, cell, *p))
+}
+
+/// query the grid and check if any cell satisfies all the props in `props`
+/// note, it may be two separate units that satisfy it.
+/// for example, BABA IS YOU and KEY IS WIN with baba and key on the same tile, checking for [You, Win] => true.
+pub fn any_cell_has(rules: &Rules, grid: &Grid, props: &[Property]) -> bool {
+    grid.cells().iter().any(|cell| cell_has(rules, cell, props))
+}
