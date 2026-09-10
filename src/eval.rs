@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     lex::lex,
     query::{
@@ -84,13 +86,16 @@ impl<'a> Turn<'a> {
 
     fn move_you(&mut self) -> bool {
         let you = query_is_property(&self.rules, self.grid, Property::You);
-        let mut moved = false;
+        let mut moved = Vec::new();
         for unit in &you {
+            if moved.contains(&unit.unit_id) {
+                continue;
+            }
             if let Some((from, _)) = self.grid.find_unit(unit.unit_id) {
-                moved |= push(self.grid, &self.rules, unit.unit_id, from, self.input);
+                moved.extend(push(self.grid, &self.rules, unit.unit_id, from, self.input));
             }
         }
-        moved
+        !moved.is_empty()
     }
 
     fn move_select(&mut self) -> bool {
@@ -148,21 +153,20 @@ impl<'a> Turn<'a> {
     }
 }
 
-fn push(grid: &mut Grid, rules: &Rules, mover: u64, from: Pos, dir: Direction) -> bool {
-    match movement_chain(grid, rules, from, dir) {
-        Some(cells) => {
-            for (i, pos) in cells.iter().enumerate().rev() {
-                let to = pos.shift(dir);
-                if i == 0 {
-                    grid.move_matching(*pos, to, dir, |u| u.id() == mover);
-                } else {
-                    grid.move_matching(*pos, to, dir, |u| rules.unit_has_prop(u.noun(), Property::Push));
-                }
-            }
-            true
+fn push(grid: &mut Grid, rules: &Rules, mover: u64, from: Pos, dir: Direction) -> HashSet<u64> {
+    let mut moved = HashSet::new();
+    if let Some(cells) = movement_chain(grid, rules, from, dir) {
+        for (i, pos) in cells.iter().enumerate().rev() {
+            let to = pos.shift(dir);
+            let currently_moved = if i == 0 {
+                grid.move_matching(*pos, to, dir, |u| u.id() == mover)
+            } else {
+                grid.move_matching(*pos, to, dir, |u| rules.unit_has_prop(u.noun(), Property::Push))
+            };
+            moved.extend(currently_moved);
         }
-        None => false,
     }
+    moved
 }
 
 // walk the grid from `from` in direction `dir`, collecting all cells that must move
@@ -269,7 +273,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "YOU chain needs to keep track of pushed"]
     fn you_push_chain() {
         assert_move_result(
             "BA IS YO BA IS PU ba ba .. ..",

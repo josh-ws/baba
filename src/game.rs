@@ -1,5 +1,5 @@
 use crate::{
-    eval::{Event, TurnResult, TurnStatus},
+    eval::{Event, TurnStatus},
     level::Level,
     pack::Levelpack,
     world::Direction,

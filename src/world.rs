@@ -165,7 +165,7 @@ impl Grid {
     }
 
     // moves all units on `from` to `to`, that match `p`
-    pub fn move_matching(&mut self, from: Pos, to: Pos, dir: Direction, p: impl Fn(&Unit) -> bool) {
+    pub fn move_matching(&mut self, from: Pos, to: Pos, dir: Direction, p: impl Fn(&Unit) -> bool) -> Vec<u64> {
         let mut units = self
             .at_mut(from)
             .units_mut()
@@ -174,7 +174,9 @@ impl Grid {
         for unit in &mut units {
             unit.set_direction(dir);
         }
+        let moved = units.iter().map(|u| u.id()).collect();
         self.at_mut(to).units_mut().extend(units);
+        moved
     }
 
     pub fn transform_unit(&mut self, id: u64, pos: Pos, into: Noun) {
