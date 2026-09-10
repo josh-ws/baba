@@ -147,7 +147,8 @@ impl<'a> Turn<'a> {
             }
         }
         for new in &spawns {
-            self.grid.create_unit(new.pos, UnitKind::Object(new.into_noun));
+            self.grid
+                .create_unit(new.pos, UnitKind::Object(new.into_noun), new.direction);
         }
         changed || !spawns.is_empty()
     }
@@ -193,6 +194,7 @@ fn movement_chain(grid: &Grid, rules: &Rules, from: Pos, dir: Direction) -> Opti
 mod tests {
     use crate::{
         eval::{Cause, Event, Turn, TurnStatus},
+        unit::{Noun, UnitKind},
         world::{Direction, Grid, Pos},
     };
 
@@ -208,6 +210,24 @@ mod tests {
         let mut grid = Grid::from_ascii(src);
         let result = Turn::new(&mut grid, dir).run();
         assert_eq!(result.status, expected);
+    }
+
+    #[track_caller]
+    fn face(grid: &mut Grid, pos: Pos, noun: Noun, dir: Direction) {
+        grid.at_mut(pos)
+            .units_mut()
+            .iter_mut()
+            .find(|u| u.kind() == UnitKind::Object(noun))
+            .expect("no such unit")
+            .set_direction(dir);
+    }
+
+    #[track_caller]
+    fn facing(grid: &Grid, noun: Noun) -> Direction {
+        grid.units()
+            .find(|u| u.kind() == UnitKind::Object(noun))
+            .expect("no such unit")
+            .direction()
     }
 
     #[test]
@@ -476,5 +496,23 @@ mod tests {
             "BA IS YO RO IS PU .. fl/ba ro",
             Direction::East,
         );
+    }
+
+    #[test]
+    fn created_has_unit_should_face_same_direction() {
+        let mut grid = Grid::from_ascii("WT IS SI RO HA KE wt/ro");
+        face(&mut grid, Pos::new(6, 0), Noun::Rock, Direction::North);
+        Turn::new(&mut grid, Direction::West).run();
+        assert_eq!(grid.to_ascii(), "WT IS SI RO HA KE ke");
+        assert_eq!(facing(&grid, Noun::Key), Direction::North);
+    }
+
+    #[test]
+    fn created_is_unit_should_face_same_direction() {
+        let mut grid = Grid::from_ascii("RO IS KE ro");
+        face(&mut grid, Pos::new(3, 0), Noun::Rock, Direction::North);
+        Turn::new(&mut grid, Direction::West).run();
+        assert_eq!(grid.to_ascii(), "RO IS KE ke");
+        assert_eq!(facing(&grid, Noun::Key), Direction::North);
     }
 }

@@ -9,10 +9,19 @@ Link = 3,2 has
 Link = 4,2 small
 Link = 5,2 where
 Link = 6,2 test-level
+Link = 7,2 move-test
 Data =
-CU IS SE .. .. .. ..
-.. cu .. .. .. .. ..
-le pa pa le le le le
+CU IS SE .. .. .. .. ..
+.. cu .. .. .. .. .. ..
+le pa pa le le le le le
+
+[move-test]
+Name = Movement test
+Data =
+BA IS    YO RO IS    PU wa wa
+.. ba/ro ro ro ba/ro ro .. ..
+BA IS    PU WA IS    ST wa wa
+
 
 [has]
 Name = Has Test!

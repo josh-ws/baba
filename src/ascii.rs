@@ -2,7 +2,7 @@ use crate::{
     lex::Run,
     rule::Rule,
     unit::{Unit, UnitKind, search_unit},
-    world::{Cell, Grid, Pos},
+    world::{Cell, Direction, Grid, Pos},
 };
 
 impl UnitKind {
@@ -52,9 +52,11 @@ impl Grid {
                 }
                 for code in stack.split("/") {
                     let id = grid.next();
-                    grid.at_mut(Pos::new(x as i32, y as i32))
-                        .units_mut()
-                        .push(Unit::new(id, UnitKind::from_ascii(code)));
+                    grid.at_mut(Pos::new(x as i32, y as i32)).units_mut().push(Unit::new(
+                        id,
+                        UnitKind::from_ascii(code),
+                        Direction::default(),
+                    ));
                 }
             }
         }

@@ -156,11 +156,11 @@ pub struct Unit {
 }
 
 impl Unit {
-    pub fn new(id: u64, kind: UnitKind) -> Self {
+    pub fn new(id: u64, kind: UnitKind, dir: Direction) -> Self {
         Self {
             id,
             kind,
-            direction: Direction::East,
+            direction: dir,
         }
     }
 

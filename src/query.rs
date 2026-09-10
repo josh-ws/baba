@@ -1,7 +1,7 @@
 use crate::{
     rule::{Complement, Rules},
     unit::{Noun, Operator, Property, Unit},
-    world::{Cell, Grid, Pos},
+    world::{Cell, Direction, Grid, Pos},
 };
 
 pub struct UnitRef {
@@ -19,14 +19,16 @@ pub struct CreateUnitRef {
     pub unit_id: u64,
     pub pos: Pos,
     pub into_noun: Noun,
+    pub direction: Direction, // inherited from the source unit
 }
 
 impl CreateUnitRef {
-    fn new(unit_id: u64, pos: Pos, into_noun: Noun) -> Self {
+    fn new(unit_id: u64, pos: Pos, into_noun: Noun, direction: Direction) -> Self {
         Self {
             unit_id,
             pos,
             into_noun,
+            direction,
         }
     }
 }
@@ -39,7 +41,7 @@ pub fn query_has(rules: &Rules, grid: &Grid, doomed: &[u64]) -> Vec<CreateUnitRe
     for (pos, unit) in items {
         let create = rules.unit_has(unit.noun());
         for created in create {
-            result.push(CreateUnitRef::new(unit.id(), pos, created));
+            result.push(CreateUnitRef::new(unit.id(), pos, created, unit.direction()));
         }
     }
     result
@@ -62,7 +64,7 @@ pub fn query_is_noun(rules: &Rules, grid: &Grid) -> Vec<CreateUnitRef> {
             continue; // e.g. BABA IS BABA. Skip transforms
         }
         for (_, to) in transforms.iter().filter(|(from, _)| *from == unit.noun()) {
-            result.push(CreateUnitRef::new(unit.id(), pos, *to));
+            result.push(CreateUnitRef::new(unit.id(), pos, *to, unit.direction()));
         }
     }
     result

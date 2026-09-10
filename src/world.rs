@@ -19,6 +19,12 @@ impl Direction {
     }
 }
 
+impl Default for Direction {
+    fn default() -> Self {
+        Self::East
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Pos {
     pub x: i32,
@@ -150,8 +156,12 @@ impl Grid {
         self.units_with_pos().find(|(_, unit)| unit.id() == id)
     }
 
-    pub fn create_unit(&mut self, pos: Pos, kind: UnitKind) {
-        let unit = Unit::new(self.next(), kind);
+    pub fn find_by_kind(&self, kind: UnitKind) -> Option<(Pos, &Unit)> {
+        self.units_with_pos().find(|(_, unit)| unit.kind() == kind)
+    }
+
+    pub fn create_unit(&mut self, pos: Pos, kind: UnitKind, dir: Direction) {
+        let unit = Unit::new(self.next(), kind, dir);
         self.at_mut(pos).units_mut().push(unit);
     }
 
@@ -184,6 +194,8 @@ impl Grid {
             return;
         };
         let new_id = self.next();
-        self.at_mut(pos).units_mut()[i] = Unit::new(new_id, UnitKind::Object(into));
+        let units = self.at_mut(pos).units_mut();
+        let dir = units[i].direction();
+        units[i] = Unit::new(new_id, UnitKind::Object(into), dir);
     }
 }
