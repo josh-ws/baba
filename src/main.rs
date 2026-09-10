@@ -3,19 +3,10 @@ use macroquad::{
     window::next_frame,
 };
 
-use crate::{game::Game, pack::Levelpack, view::Viewer, world::Direction};
+use crate::view::Viewer;
+use baba::{game::Game, pack::Levelpack, world::Direction};
 
-mod ascii;
-mod eval;
-mod game;
-mod level;
-mod lex;
-mod pack;
-mod query;
-mod rule;
-mod unit;
 mod view;
-mod world;
 
 const KEYMAP: &[(KeyCode, Direction)] = &[
     (KeyCode::W, Direction::North),

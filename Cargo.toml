@@ -3,5 +3,13 @@ name = "baba"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "baba"
+path = "src/lib.rs"
+
+[[bin]]
+name = "baba"
+path = "src/main.rs"
+
 [dependencies]
 macroquad = "0.4.16"

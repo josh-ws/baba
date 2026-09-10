@@ -1,0 +1,3 @@
+Bugs
+- When X HAS Y and Y spawns, Y should face the direction that X had
+- When exiting a level, the `selected` vec is stale

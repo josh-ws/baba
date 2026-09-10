@@ -12,7 +12,7 @@ use macroquad::{
     window::{clear_background, screen_height, screen_width},
 };
 
-use crate::{
+use baba::{
     eval::{Cause, Event},
     game::Game,
     lex::lex,
