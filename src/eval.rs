@@ -38,6 +38,75 @@ pub struct TurnResult {
     pub events: Vec<Event>,
 }
 
+struct Movement<'a> {
+    grid: &'a mut Grid,
+    rules: &'a Rules,
+    moved: HashSet<u64>,
+}
+
+impl<'a> Movement<'a> {
+    fn new(grid: &'a mut Grid, rules: &'a Rules) -> Self {
+        Self {
+            grid,
+            rules,
+            moved: HashSet::new(),
+        }
+    }
+
+    /// move `mover` along one tile in provided direction.
+    /// no-op if movement is impossible or provided unit has already moved this turn.
+    fn try_move(&mut self, mover: u64, dir: Direction) {
+        if self.moved.contains(&mover) {
+            return; // already moved this turn
+        }
+        let Some((from, _)) = self.grid.find_unit(mover) else {
+            return; // unit doesn't exist
+        };
+        let Some(cells_to_move) = self.chain(from, dir) else {
+            return; // movement is impossible (blocked by STOP, etc.)
+        };
+        for (i, pos) in cells_to_move.iter().enumerate().rev() {
+            let to = pos.shift(dir);
+            let currently_moved = if i == 0 {
+                self.grid.move_matching(*pos, to, dir, |u| u.id() == mover)
+            } else {
+                self.grid
+                    .move_matching(*pos, to, dir, |u| self.rules.unit_has_prop(u.noun(), Property::Push))
+            };
+            self.moved.extend(currently_moved);
+        }
+    }
+
+    /// move from `from` in direction `dir`, returning all cells that must also move this turn
+    fn chain(&self, from: Pos, dir: Direction) -> Option<Vec<Pos>> {
+        let mut cells_to_move = vec![from];
+        let mut next = from.shift(dir);
+        loop {
+            if !self.grid.in_bounds(next) {
+                return None;
+            }
+            if cell_has(self.rules, self.grid.at(next), &[Property::Stop]) {
+                return None;
+            }
+            let pushable = self
+                .grid
+                .at(next)
+                .units()
+                .iter()
+                .any(|u| !self.moved.contains(&u.id()) && self.rules.unit_has_prop(u.noun(), Property::Push));
+            if !pushable {
+                return Some(cells_to_move);
+            }
+            cells_to_move.push(next);
+            next = next.shift(dir); // move to next cell
+        }
+    }
+
+    fn changed(&self) -> bool {
+        !self.moved.is_empty()
+    }
+}
+
 pub struct Turn<'a> {
     grid: &'a mut Grid,
     rules: Rules,
@@ -86,17 +155,12 @@ impl<'a> Turn<'a> {
 
     fn move_you(&mut self) -> bool {
         let you = query_is_property(&self.rules, self.grid, Property::You);
-        let mut moved = HashSet::new();
+        let dir = self.input;
+        let mut movement = Movement::new(self.grid, &self.rules);
         for unit in &you {
-            if moved.contains(&unit.unit_id) {
-                continue;
-            }
-            if let Some((from, _)) = self.grid.find_unit(unit.unit_id) {
-                let just_moved = push(self.grid, &self.rules, unit.unit_id, from, self.input, &moved);
-                moved.extend(just_moved);
-            }
+            movement.try_move(unit.unit_id, dir);
         }
-        !moved.is_empty()
+        movement.changed()
     }
 
     fn move_select(&mut self) -> bool {
@@ -152,54 +216,6 @@ impl<'a> Turn<'a> {
                 .create_unit(new.pos, UnitKind::Object(new.into_noun), new.direction);
         }
         changed || !spawns.is_empty()
-    }
-}
-
-fn push(
-    grid: &mut Grid,
-    rules: &Rules,
-    mover: u64,
-    from: Pos,
-    dir: Direction,
-    already_moved: &HashSet<u64>,
-) -> HashSet<u64> {
-    let mut moved = HashSet::new();
-    if let Some(cells) = movement_chain(grid, rules, from, dir, &already_moved) {
-        for (i, pos) in cells.iter().enumerate().rev() {
-            let to = pos.shift(dir);
-            let currently_moved = if i == 0 {
-                grid.move_matching(*pos, to, dir, |u| u.id() == mover)
-            } else {
-                grid.move_matching(*pos, to, dir, |u| rules.unit_has_prop(u.noun(), Property::Push))
-            };
-            moved.extend(currently_moved);
-        }
-    }
-    moved
-}
-
-// walk the grid from `from` in direction `dir`, collecting all cells that must move
-// `None` result means movement is impossible
-fn movement_chain(grid: &Grid, rules: &Rules, from: Pos, dir: Direction, moved: &HashSet<u64>) -> Option<Vec<Pos>> {
-    let mut cells_to_move = vec![from];
-    let mut next = from.shift(dir);
-    loop {
-        if !grid.in_bounds(next) {
-            return None;
-        }
-        if cell_has(rules, grid.at(next), &[Property::Stop]) {
-            return None;
-        }
-        let pushable = grid
-            .at(next)
-            .units()
-            .iter()
-            .any(|u| !moved.contains(&u.id()) && rules.unit_has_prop(u.noun(), Property::Push));
-        if !pushable {
-            return Some(cells_to_move);
-        }
-        cells_to_move.push(next);
-        next = next.shift(dir); // move to next cell
     }
 }
 
