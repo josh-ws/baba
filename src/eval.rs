@@ -86,13 +86,14 @@ impl<'a> Turn<'a> {
 
     fn move_you(&mut self) -> bool {
         let you = query_is_property(&self.rules, self.grid, Property::You);
-        let mut moved = Vec::new();
+        let mut moved = HashSet::new();
         for unit in &you {
             if moved.contains(&unit.unit_id) {
                 continue;
             }
             if let Some((from, _)) = self.grid.find_unit(unit.unit_id) {
-                moved.extend(push(self.grid, &self.rules, unit.unit_id, from, self.input));
+                let just_moved = push(self.grid, &self.rules, unit.unit_id, from, self.input, &moved);
+                moved.extend(just_moved);
             }
         }
         !moved.is_empty()
@@ -154,9 +155,16 @@ impl<'a> Turn<'a> {
     }
 }
 
-fn push(grid: &mut Grid, rules: &Rules, mover: u64, from: Pos, dir: Direction) -> HashSet<u64> {
+fn push(
+    grid: &mut Grid,
+    rules: &Rules,
+    mover: u64,
+    from: Pos,
+    dir: Direction,
+    already_moved: &HashSet<u64>,
+) -> HashSet<u64> {
     let mut moved = HashSet::new();
-    if let Some(cells) = movement_chain(grid, rules, from, dir) {
+    if let Some(cells) = movement_chain(grid, rules, from, dir, &already_moved) {
         for (i, pos) in cells.iter().enumerate().rev() {
             let to = pos.shift(dir);
             let currently_moved = if i == 0 {
@@ -172,7 +180,7 @@ fn push(grid: &mut Grid, rules: &Rules, mover: u64, from: Pos, dir: Direction) -
 
 // walk the grid from `from` in direction `dir`, collecting all cells that must move
 // `None` result means movement is impossible
-fn movement_chain(grid: &Grid, rules: &Rules, from: Pos, dir: Direction) -> Option<Vec<Pos>> {
+fn movement_chain(grid: &Grid, rules: &Rules, from: Pos, dir: Direction, moved: &HashSet<u64>) -> Option<Vec<Pos>> {
     let mut cells_to_move = vec![from];
     let mut next = from.shift(dir);
     loop {
@@ -182,7 +190,12 @@ fn movement_chain(grid: &Grid, rules: &Rules, from: Pos, dir: Direction) -> Opti
         if cell_has(rules, grid.at(next), &[Property::Stop]) {
             return None;
         }
-        if !cell_has(rules, grid.at(next), &[Property::Push]) {
+        let pushable = grid
+            .at(next)
+            .units()
+            .iter()
+            .any(|u| !moved.contains(&u.id()) && rules.unit_has_prop(u.noun(), Property::Push));
+        if !pushable {
             return Some(cells_to_move);
         }
         cells_to_move.push(next);
@@ -514,5 +527,14 @@ mod tests {
         Turn::new(&mut grid, Direction::West).run();
         assert_eq!(grid.to_ascii(), "RO IS KE ke");
         assert_eq!(facing(&grid, Noun::Key), Direction::North);
+    }
+
+    #[test]
+    fn units_should_not_be_double_pushed() {
+        assert_move_result(
+            "BA IS YO RO IS PU ba ro/ba .. ..",
+            "BA IS YO RO IS PU .. ba ro/ba ..",
+            Direction::East,
+        );
     }
 }
