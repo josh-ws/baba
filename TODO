@@ -1,5 +1,4 @@
 Bugs
-- Keyboard controls are incorrect
 - When X HAS Y and Y spawns, Y should face the direction that X had
 - When exiting a level, the `selected` vec is stale
 - Maps should track a parent. Going Root -> Map A -> Map B, exiting B shouldn't take you to Root.

@@ -12,8 +12,8 @@ Link = 6,2 test-level
 Link = 7,2 move-test
 Data =
 CU IS SE .. .. .. .. ..
-.. cu .. .. .. .. .. ..
-le pa pa le le le le le
+.. .. .. .. .. .. .. ..
+le pa pa le le le le cu/le
 
 [move-test]
 Name = Movement test
