@@ -1,10 +1,11 @@
 use crate::unit::{Noun, Text, Unit, UnitKind};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub enum Direction {
+    #[default]
+    East,
     North,
     South,
-    East,
     West,
 }
 
@@ -16,12 +17,6 @@ impl Direction {
             Direction::East => (1, 0),
             Direction::West => (-1, 0),
         }
-    }
-}
-
-impl Default for Direction {
-    fn default() -> Self {
-        Self::East
     }
 }
 
@@ -97,7 +92,7 @@ impl Grid {
         }
     }
 
-    pub fn next(&mut self) -> u64 {
+    pub fn next_id(&mut self) -> u64 {
         let id = self.next_id;
         self.next_id += 1;
         id
@@ -161,7 +156,7 @@ impl Grid {
     }
 
     pub fn create_unit(&mut self, pos: Pos, kind: UnitKind, dir: Direction) {
-        let unit = Unit::new(self.next(), kind, dir);
+        let unit = Unit::new(self.next_id(), kind, dir);
         self.at_mut(pos).units_mut().push(unit);
     }
 
@@ -193,7 +188,7 @@ impl Grid {
         let Some(i) = self.at(pos).units().iter().position(|u| u.id() == id) else {
             return;
         };
-        let new_id = self.next();
+        let new_id = self.next_id();
         let units = self.at_mut(pos).units_mut();
         let dir = units[i].direction();
         units[i] = Unit::new(new_id, UnitKind::Object(into), dir);

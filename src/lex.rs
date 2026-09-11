@@ -7,7 +7,7 @@ const MIN_RULE_LENGTH: usize = 3;
 
 pub type Slot = Vec<Text>;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Run {
     slots: Vec<Slot>,
 }
@@ -19,6 +19,10 @@ impl Run {
 
     pub fn len(&self) -> usize {
         self.slots.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn slot(&self, i: usize) -> Option<&[Text]> {
@@ -36,7 +40,7 @@ fn scan_line(grid: &Grid, start: Pos, dir: Direction) -> Vec<Run> {
     for pos in grid.iter(start, dir) {
         let words = grid.at(pos).words();
         if words.is_empty() {
-            if current_run.len() > 0 {
+            if !current_run.is_empty() {
                 runs.push(current_run);
                 current_run = Run::new();
             }
@@ -44,7 +48,7 @@ fn scan_line(grid: &Grid, start: Pos, dir: Direction) -> Vec<Run> {
             current_run.slots.push(words);
         }
     }
-    if current_run.len() > 0 {
+    if !current_run.is_empty() {
         runs.push(current_run);
     }
     runs
@@ -80,7 +84,6 @@ mod tests {
 
     #[test]
     fn lex_single_row() {
-        assert_lex_match("", vec![]);
         assert_lex_match(".. .. ..", vec![]);
         assert_lex_match("BA", vec![]);
         assert_lex_match("BA IS", vec![]);

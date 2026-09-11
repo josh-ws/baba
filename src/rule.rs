@@ -11,6 +11,7 @@ pub enum Complement {
     Property(Property),
 }
 
+#[derive(Default)]
 pub struct Rules(Vec<Rule>);
 
 const INHERENT: &[Rule] = &[
@@ -197,7 +198,6 @@ mod tests {
 
     #[test]
     fn parse_finds_nothing() {
-        assert_parse_match("", vec![]);
         assert_parse_match(".. .. ..", vec![]);
         assert_parse_match("ba ba ba", vec![]);
     }

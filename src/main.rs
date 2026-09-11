@@ -4,9 +4,11 @@ use macroquad::{
 };
 
 use crate::view::Viewer;
-use baba::{game::Game, pack::Levelpack, world::Direction};
+use baba::{game::Game, world::Direction};
 
 mod view;
+
+const PACK_SRC: &str = "assets/packs/demo.txt"; // TODO(jw) move hardcoded path
 
 #[derive(Clone, Copy)]
 enum Action {
@@ -44,11 +46,10 @@ fn get_action() -> Option<Action> {
 }
 
 #[macroquad::main("baba")]
-async fn main() {
-    let pack = Levelpack::parse(include_str!("../assets/packs/demo.txt"));
-    let mut game = Game::new(pack);
+async fn main() -> Result<(), String> {
+    let mut game = Game::from_file(PACK_SRC)?;
 
-    let mut viewer = Viewer::new().await;
+    let mut viewer = Viewer::new().await?;
     loop {
         let mut events = Vec::new();
         match get_action() {
@@ -56,19 +57,18 @@ async fn main() {
                 events = game.update(dir);
             }
             Some(Action::Undo) => {
-                game.current_level_mut().undo();
+                game.undo();
             }
             Some(Action::EnterLevel) => {
                 game.enter_link();
             }
             Some(Action::BackOutOfLevel) => game.return_to_root(),
-            Some(Action::Refresh) => match std::fs::read_to_string("assets/packs/demo.txt") {
-                Ok(src) => {
-                    game.reload(&src);
+            Some(Action::Refresh) => {
+                if let Err(e) = game.reload(PACK_SRC) {
+                    eprintln!("could not reload pack: {e}")
                 }
-                Err(e) => eprintln!("reload failed: {e}"),
-            },
-            Some(Action::Exit) => return,
+            }
+            Some(Action::Exit) => return Ok(()),
             _ => (),
         }
         viewer.update(&game, &events);

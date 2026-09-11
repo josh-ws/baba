@@ -126,7 +126,7 @@ pub struct Viewer {
 }
 
 impl Viewer {
-    pub async fn new() -> Self {
+    pub async fn new() -> Result<Self, String> {
         set_window_size(WINDOW_WIDTH, WINDOW_HEIGHT);
         let mut viewer = Viewer {
             key: String::default(),
@@ -134,10 +134,10 @@ impl Viewer {
             particles: Vec::new(),
             next_spawn: 0.,
         };
-        viewer.store_texture("sprites", "assets/sprites.png").await;
-        viewer.store_texture("words", "assets/words.png").await;
-        viewer.store_texture("particles", "assets/particles.png").await;
-        viewer
+        viewer.store_texture("sprites", "assets/sprites.png").await?;
+        viewer.store_texture("words", "assets/words.png").await?;
+        viewer.store_texture("particles", "assets/particles.png").await?;
+        Ok(viewer)
     }
 
     pub fn update(&mut self, game: &Game, events: &[Event]) {
@@ -181,10 +181,13 @@ impl Viewer {
         draw_text(format!("{}", get_fps()), 0., 20., 32., WHITE);
     }
 
-    async fn store_texture(&mut self, key: &str, path: &str) {
-        let texture = load_texture(path).await.unwrap();
+    async fn store_texture(&mut self, key: &str, path: &str) -> Result<(), String> {
+        let texture = load_texture(path)
+            .await
+            .map_err(|e| format!("could not load texture {path}: {e}"))?;
         texture.set_filter(FilterMode::Nearest);
         self.textures.insert(key.to_string(), texture);
+        Ok(())
     }
 
     fn draw_background(&self, layout: &Layout) {

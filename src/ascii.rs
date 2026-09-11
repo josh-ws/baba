@@ -6,10 +6,18 @@ use crate::{
 };
 
 impl UnitKind {
+    #[cfg(test)]
     pub fn from_ascii(s: &str) -> Self {
         search_unit(|d| d.code == s)
             .unwrap_or_else(|| panic!("unrecognised code {s}"))
             .kind
+    }
+
+    pub fn try_from_ascii(s: &str) -> Result<Self, String> {
+        match search_unit(|d| d.code == s) {
+            Some(unit) => Ok(unit.kind),
+            None => Err(format!("invalid unitkind code '{}'", s)),
+        }
     }
 
     #[cfg(test)]
@@ -36,7 +44,12 @@ impl Cell {
 }
 
 impl Grid {
+    #[cfg(test)]
     pub fn from_ascii(src: &str) -> Self {
+        Self::try_from_ascii(src).expect("invalid code")
+    }
+
+    pub fn try_from_ascii(src: &str) -> Result<Self, String> {
         let rows = src
             .trim()
             .lines()
@@ -44,6 +57,12 @@ impl Grid {
             .collect::<Vec<Vec<&str>>>();
         let h = rows.len() as i32;
         let w = rows.first().map_or(0, |r| r.len()) as i32;
+        if h == 0 || w == 0 {
+            return Err(format!("data grid has invalid size {w}x{h}"));
+        }
+        if rows.iter().any(|r| r.len() != w as usize) {
+            return Err("staggered grid: not all rows have the same length".to_string());
+        }
         let mut grid = Self::empty(w, h);
         for (y, row) in rows.iter().enumerate() {
             for (x, stack) in row.iter().enumerate() {
@@ -51,16 +70,16 @@ impl Grid {
                     continue;
                 }
                 for code in stack.split("/") {
-                    let id = grid.next();
+                    let id = grid.next_id();
                     grid.at_mut(Pos::new(x as i32, y as i32)).units_mut().push(Unit::new(
                         id,
-                        UnitKind::from_ascii(code),
+                        UnitKind::try_from_ascii(code)?,
                         Direction::default(),
                     ));
                 }
             }
         }
-        grid
+        Ok(grid)
     }
 
     #[cfg(test)]
@@ -130,5 +149,29 @@ mod tests {
     #[test]
     fn ascii_stacked_round_trip() {
         assert_round_trip("ba/BA IS YO .. wa/ro");
+    }
+
+    #[test]
+    fn cannot_create_empty_grid() {
+        let result = Grid::try_from_ascii("");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "data grid has invalid size 0x0".to_string());
+    }
+
+    #[test]
+    fn cannot_create_staggered_grid() {
+        let result = Grid::try_from_ascii(".. ..\n..");
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "staggered grid: not all rows have the same length".to_string()
+        );
+    }
+
+    #[test]
+    fn cannot_create_invalid_unit_ascii() {
+        let result = UnitKind::try_from_ascii("**");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "invalid unitkind code '**'".to_string());
     }
 }
