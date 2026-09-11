@@ -18,6 +18,15 @@ impl Direction {
             Direction::West => (-1, 0),
         }
     }
+
+    pub fn flip(self) -> Direction {
+        match self {
+            Direction::East => Direction::West,
+            Direction::West => Direction::East,
+            Direction::North => Direction::South,
+            Direction::South => Direction::North,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -166,6 +175,17 @@ impl Grid {
             true
         } else {
             false
+        }
+    }
+
+    pub fn turn_unit(&mut self, id: u64, dir: Direction) {
+        if let Some(unit) = self
+            .cells
+            .iter_mut()
+            .flat_map(|c| c.units_mut().iter_mut())
+            .find(|u| u.id() == id)
+        {
+            unit.set_direction(dir);
         }
     }
 

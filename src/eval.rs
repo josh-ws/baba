@@ -53,6 +53,10 @@ impl<'a> Movement<'a> {
         }
     }
 
+    fn turn(&mut self, mover: u64, dir: Direction) {
+        self.grid.turn_unit(mover, dir);
+    }
+
     /// move `mover` along one tile in provided direction.
     /// no-op if movement is impossible or provided unit has already moved this turn.
     fn try_move(&mut self, mover: u64, dir: Direction) {
@@ -126,8 +130,10 @@ impl<'a> Turn<'a> {
 
     pub fn run(mut self) -> TurnResult {
         self.reparse();
-        self.move_you().then(|| self.reparse());
-        self.move_select().then(|| self.reparse());
+        let you = self.move_you();
+        let auto = self.move_autonomous();
+        let select = self.move_select();
+        (you || auto || select).then(|| self.reparse()); // don't reparse between movements, matches retail
         self.handle_transforms().then(|| self.reparse());
         self.handle_sink().then(|| self.reparse());
         self.handle_defeats().then(|| self.reparse());
@@ -179,6 +185,25 @@ impl<'a> Turn<'a> {
             moved = true;
         }
         moved
+    }
+
+    fn move_autonomous(&mut self) -> bool {
+        let movers = self
+            .grid
+            .units()
+            .filter(|u| self.rules.unit_has_prop(u.noun(), Property::Move))
+            .map(|u| (u.id(), u.direction()))
+            .collect::<Vec<(u64, Direction)>>();
+
+        let mut movement = Movement::new(self.grid, &self.rules);
+        for (id, direction) in movers {
+            movement.try_move(id, direction);
+            if !movement.moved.contains(&id) {
+                movement.turn(id, direction.flip());
+                movement.try_move(id, direction.flip());
+            }
+        }
+        movement.changed()
     }
 
     fn handle_transforms(&mut self) -> bool {
@@ -418,7 +443,12 @@ mod tests {
 
     #[test]
     fn test_sink_does_not_destroy_self() {
-        assert_move_result("WT IS SI wa", "WT IS SI wa", Direction::East);
+        assert_move_result("WT IS SI wt", "WT IS SI wt", Direction::East);
+    }
+
+    #[test]
+    fn test_sink_mutually() {
+        assert_move_result("WT IS SI RO IS SI ro/wt", "WT IS SI RO IS SI ..", Direction::East);
     }
 
     #[test]
@@ -552,5 +582,144 @@ mod tests {
             "BA IS YO RO IS PU .. ba ro/ba ..",
             Direction::East,
         );
+    }
+
+    #[test]
+    fn basic_move_movement() {
+        assert_move_result("BA IS MO ba ..", "BA IS MO .. ba", Direction::West);
+        assert_move_result("BA IS MO ba .. ba ..", "BA IS MO .. ba .. ba", Direction::West);
+        assert_move_result(".. ba ..", ".. ba ..", Direction::West);
+    }
+
+    #[test]
+    fn move_blocked_by_edge_should_turn() {
+        assert_move_result("BA IS MO .. ba", "BA IS MO ba ..", Direction::North);
+    }
+
+    #[test]
+    fn move_blocked_by_unit_should_turn() {
+        assert_move_result(
+            "BA IS MO RO IS ST .. ba RO",
+            "BA IS MO RO IS ST ba .. RO",
+            Direction::North,
+        );
+        assert_move_result(
+            "BA IS MO RO IS PU .. ba RO",
+            "BA IS MO RO IS PU ba .. RO",
+            Direction::North,
+        );
+        assert_move_result(
+            "BA IS MO RO IS PU .. ba RO RO RO",
+            "BA IS MO RO IS PU ba .. RO RO RO",
+            Direction::North,
+        );
+    }
+
+    #[test]
+    fn move_can_push_units() {
+        assert_move_result(
+            "BA IS MO RO IS PU ba RO ..",
+            "BA IS MO RO IS PU .. ba RO",
+            Direction::North,
+        );
+        assert_move_result(
+            "BA IS MO RO IS PU ba RO RO RO RO ..",
+            "BA IS MO RO IS PU .. ba RO RO RO RO",
+            Direction::North,
+        );
+    }
+
+    #[test]
+    fn move_can_push_you_units() {
+        assert_move_result(
+            "RO IS MO BA IS YO BA IS PU ro ba ..",
+            "RO IS MO BA IS YO BA IS PU .. ro ba",
+            Direction::North,
+        );
+    }
+
+    #[test]
+    fn move_can_stack_onto_units() {
+        assert_move_result("BA IS MO ba ro", "BA IS MO .. ro/ba", Direction::North)
+    }
+
+    #[test]
+    fn move_blocked_both_directions_still_turns() {
+        let mut grid = Grid::from_ascii("BA IS MO RO IS ST ro ba ro");
+        face(&mut grid, Pos::new(7, 0), Noun::Baba, Direction::East);
+        Turn::new(&mut grid, Direction::West).run();
+        assert_eq!(grid.to_ascii(), "BA IS MO RO IS ST ro ba ro");
+        assert_eq!(facing(&grid, Noun::Baba), Direction::West);
+        Turn::new(&mut grid, Direction::West).run();
+        assert_eq!(grid.to_ascii(), "BA IS MO RO IS ST ro ba ro");
+        assert_eq!(facing(&grid, Noun::Baba), Direction::East);
+    }
+
+    #[test]
+    fn move_can_push_move_units() {
+        let mut grid = Grid::from_ascii("RO IS MO RO IS PU BA IS YO .. .. .. ro ba .. .. ..");
+        face(&mut grid, Pos::new(12, 0), Noun::Rock, Direction::North);
+        Turn::new(&mut grid, Direction::West).run();
+        assert_eq!(grid.to_ascii(), "RO IS MO RO IS PU BA IS YO .. ro .. ba .. .. .. ..");
+    }
+
+    #[test]
+    fn move_and_you_units_move_twice() {
+        assert_move_result(
+            "BA IS YO BA IS MO ba .. ..",
+            "BA IS YO BA IS MO .. .. ba",
+            Direction::East,
+        );
+    }
+
+    #[test]
+    fn move_does_not_run_on_turn_rule_created() {
+        assert_move_result(
+            "BA IS YO ba KE .. IS MO .. ke ..",
+            "BA IS YO .. ba KE IS MO .. ke ..",
+            Direction::East,
+        );
+    }
+
+    #[test]
+    fn move_runs_on_turn_rule_broken() {
+        assert_move_result(
+            "BA IS YO KE ..\n.. .. ba IS ..\nke .. .. MO ..",
+            "BA IS YO KE ..\n.. .. .. ba IS\n.. ke .. MO ..",
+            Direction::East,
+        );
+    }
+
+    #[test]
+    fn move_onto_sink() {
+        let mut grid = Grid::from_ascii("RO IS MO WT IS SI ro wt");
+        let result = Turn::new(&mut grid, Direction::North).run();
+        assert_eq!(grid.to_ascii(), "RO IS MO WT IS SI .. ..");
+        assert_eq!(result.events.len(), 2);
+    }
+
+    #[test]
+    fn move_defeat_unit_onto_you() {
+        let mut grid = Grid::from_ascii("RO IS MO RO IS DE BA IS YO ro ba");
+        let result = Turn::new(&mut grid, Direction::North).run();
+        assert_eq!(grid.to_ascii(), "RO IS MO RO IS DE BA IS YO .. ro");
+        assert_eq!(result.events.len(), 1);
+    }
+
+    #[test]
+    fn move_win_unit_onto_you() {
+        let mut grid = Grid::from_ascii("RO IS MO RO IS WI BA IS YO ro ba");
+        let result = Turn::new(&mut grid, Direction::North).run();
+        assert_eq!(grid.to_ascii(), "RO IS MO RO IS WI BA IS YO .. ba/ro");
+        assert_eq!(result.status, TurnStatus::Win);
+    }
+
+    #[test]
+    fn move_unit_onto_you_and_sink() {
+        assert_move_result(
+            "RO IS MO BA IS YO WT IS SI ro ba/wt",
+            "RO IS MO BA IS YO WT IS SI .. ..",
+            Direction::North,
+        )
     }
 }

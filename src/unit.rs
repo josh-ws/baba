@@ -85,6 +85,7 @@ const UNIT_TYPES: &[UnitTypeData] = &[
     word(Text::Property(Property::Defeat), "DE", 14),
     word(Text::Operator(Operator::Has), "HA", 15),
     word(Text::Noun(Noun::Key), "KE", 16),
+    word(Text::Property(Property::Move), "MO", 17),
     object(Noun::Baba, "ba", 0, Facing::Directional, UnitGroup::Characters),
     object(Noun::Flag, "fl", 1, Facing::Fixed, UnitGroup::Item),
     object(Noun::Rock, "ro", 2, Facing::Fixed, UnitGroup::Item),
@@ -133,6 +134,7 @@ pub enum Property {
     Select,
     Sink,
     Defeat,
+    Move,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

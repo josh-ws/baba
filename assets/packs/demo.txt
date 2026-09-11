@@ -18,9 +18,11 @@ le pa pa le le le le cu/le
 [move-test]
 Name = Movement test
 Data =
-BA IS    YO RO IS    PU wa wa
-.. ba/ro ro ro ba/ro ro .. ..
-BA IS    PU WA IS    ST wa wa
+BA IS YO RO IS MO RO IS PU
+.. .. .. .. .. .. .. .. ..
+.. .. .. .. .. .. .. .. ..
+ba .. .. .. .. .. ro .. ..
+.. .. .. .. .. .. BA IS PU
 
 
 [has]
