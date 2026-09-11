@@ -109,3 +109,171 @@ impl Levelpack {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::pack::Levelpack;
+
+    #[test]
+    fn cannot_create_pack_with_invalid_route() {
+        let src = "
+            Pack = Test Pack
+            Root = invalid-root";
+        let result = Levelpack::parse(src);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "invalid levelpack root: `invalid-root`".to_string()
+        );
+    }
+
+    #[test]
+    fn cannot_create_pack_with_missing_link_key() {
+        let src = "
+            Pack = Test Pack
+            Root = root
+
+            [root]
+            Name = Test Map
+            Kind = map
+            Link = 0,0 missing
+            Data =
+            ba";
+        let result = Levelpack::parse(src);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "levelpack has invalid links: 'root' -> 'missing'".to_string()
+        );
+    }
+
+    #[test]
+    fn cannot_create_pack_with_duplicate_key() {
+        let src = "
+            Pack = Test Pack
+            Root = root
+
+            [root]
+            Name = Test Map
+            Kind = map
+            Link = 0,0 missing
+            Data =
+            ba
+
+            [root]
+            Name = Test Map 2
+            Kind = map
+            Link = 0,0 missing
+            Data =
+            ba";
+        let result = Levelpack::parse(src);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "levelpack has duplicate level key root".to_string()
+        );
+    }
+
+    #[test]
+    fn cannot_create_pack_with_invalid_key() {
+        let src = "
+            Pack = Test Pack
+            Root = root
+            Foo = Bar
+
+            [root]
+            Name = Test Map
+            Kind = map
+            Link = 0,0 missing
+            Data =
+            ba";
+        let result = Levelpack::parse(src);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "unrecognised pack key Foo".to_string());
+    }
+
+    #[test]
+    fn cannot_create_pack_with_invalid_level_key() {
+        let src = "
+            Pack = Test Pack
+            Root = root
+
+            [root]
+            Name = Test Map
+            Kind = map
+            Link = 0,0 missing
+            Foo = Bar
+            Data =
+            ba";
+        let result = Levelpack::parse(src);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "level root: unrecognised key `Foo ` in level `Test Map`".to_string()
+        );
+    }
+
+    #[test]
+    fn cannot_create_pack_with_invalid_ascii_level_data() {
+        let src = "
+            Pack = Test Pack
+            Root = root
+
+            [root]
+            Name = Test Map
+            Kind = map
+            Link = 0,0 missing
+            Data =
+            .. ZZ";
+        let result = Levelpack::parse(src);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "level root: invalid unitkind code 'ZZ'".to_string()
+        );
+    }
+
+    #[test]
+    fn cannot_create_pack_with_no_level_data() {
+        let src = "
+            Pack = Test Pack
+            Root = root
+
+            [root]
+            Name = Test Map
+            Kind = map
+            Link = 0,0 missing";
+        let result = Levelpack::parse(src);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "level root: data grid has invalid size 0x0".to_string()
+        );
+    }
+
+    #[test]
+    fn cannot_create_pack_with_link_to_blank_tile() {
+        let src = "
+            Pack = Test Pack
+            Root = root
+
+            [root]
+            Name = Root Map
+            Kind = map
+            Link = 0,0 test
+            Data =
+            .. .. ..
+
+            [test]
+            Name = Test Map
+            Kind = puzzle
+            Data =
+            ba .. ..";
+        let result = Levelpack::parse(src);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "level root: link 0,0 test links to empty or invalid unit".to_string()
+        );
+    }
+}
