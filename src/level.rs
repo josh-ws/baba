@@ -124,7 +124,7 @@ impl Level {
         let iy = y.parse::<i32>().map_err(|_| format!("link {src} Y position invalid"))?;
         let pos = Pos::new(ix, iy);
         if !self.grid.in_bounds(pos) {
-            return Err(format!("link coordinates out of bounds: `{src}`"));
+            return Err(format!("link coordinates out of bounds: `{src}` at {ix},{iy}"));
         }
         let unit = self
             .grid
