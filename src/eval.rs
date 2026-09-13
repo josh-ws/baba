@@ -67,7 +67,8 @@ impl<'a> Movement<'a> {
             return; // unit doesn't exist
         };
         let Some(cells_to_move) = self.chain(from, dir) else {
-            return; // movement is impossible (blocked by STOP, etc.)
+            self.grid.turn_unit(mover, dir); // movement is impossible (blocked by STOP, etc.) but still turn
+            return;
         };
         for (i, pos) in cells_to_move.iter().enumerate().rev() {
             let to = pos.shift(dir);
@@ -311,6 +312,14 @@ mod tests {
             .direction()
     }
 
+    #[track_caller]
+    fn expect_facing(setup: &str, input: &str, exp: &str, noun: Noun, dir: Direction) {
+        let mut grid = Grid::from_ascii(setup);
+        play(&mut grid, input);
+        assert_eq!(grid.to_ascii(), exp);
+        assert_eq!(facing(&grid, noun), dir);
+    }
+
 
     #[test]
     fn you() {
@@ -328,6 +337,48 @@ mod tests {
         expect("BA IS YO .. ba", "v", "BA IS YO .. ba");
         // blocked by unit
         expect("BA IS YO .. ba wa .. WA IS ST", ">", "BA IS YO .. ba wa .. WA IS ST");
+    }
+
+    #[test]
+    fn blocked_turns() {
+        // units start facing east, so every blocked case here tries some other direction
+        // control: a successful move faces the direction moved
+        expect_facing("BA IS YO ba\n.. .. .. ..", "v", "BA IS YO ..\n.. .. .. ba", Noun::Baba, Direction::South);
+        expect_facing("BA IS YO ..\n.. .. .. ba", "^", "BA IS YO ba\n.. .. .. ..", Noun::Baba, Direction::North);
+        // blocked by the edge: turns, doesn't move
+        expect_facing("BA IS YO .. ba", "^", "BA IS YO .. ba", Noun::Baba, Direction::North);
+        expect_facing("BA IS YO .. ba", "v", "BA IS YO .. ba", Noun::Baba, Direction::South);
+        expect_facing("ba .. BA IS YO", "<", "ba .. BA IS YO", Noun::Baba, Direction::West);
+        // blocked by `stop`
+        expect_facing(
+            "BA IS YO WA IS ST ba\n.. .. .. .. .. .. wa",
+            "v",
+            "BA IS YO WA IS ST ba\n.. .. .. .. .. .. wa",
+            Noun::Baba,
+            Direction::South,
+        );
+        // blocked by level, which is inherently `stop`
+        expect_facing(
+            "BA IS YO\nle .. ..\nba .. ..",
+            "^",
+            "BA IS YO\nle .. ..\nba .. ..",
+            Noun::Baba,
+            Direction::North,
+        );
+        // blocked by a `push` chain that is itself blocked
+        expect_facing(
+            "BA IS YO RO IS PU ba\n.. .. .. .. .. .. ro",
+            "v",
+            "BA IS YO RO IS PU ba\n.. .. .. .. .. .. ro",
+            Noun::Baba,
+            Direction::South,
+        );
+        // turning back east from another facing, so the default can't satisfy it
+        let mut grid = Grid::from_ascii("BA IS YO .. ba");
+        face(&mut grid, Pos::new(4, 0), Noun::Baba, Direction::North);
+        play(&mut grid, ">");
+        assert_eq!(grid.to_ascii(), "BA IS YO .. ba");
+        assert_eq!(facing(&grid, Noun::Baba), Direction::East);
     }
 
     #[test]
