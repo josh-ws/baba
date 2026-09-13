@@ -9,7 +9,8 @@ Controls:
 - Z to undo
 
 Currently supported:
-- IS
+- IS (both for properties and transformations; e.g. BABA IS KEY and BABA IS YOU)
+- HAS (e.g. BABA HAS KEY)
 - YOU
 - STOP
 - PUSH
@@ -17,6 +18,9 @@ Currently supported:
 - SELECT
 - SINK
 - DEFEAT
+- MOVE
+- AUTO
+
 ...plus a bunch of nouns.
 
 Behaviour between this reimplementation and the retail game is expected to be very similar, but not exact.
