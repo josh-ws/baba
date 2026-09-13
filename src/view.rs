@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use macroquad::{
-    color::{Color, WHITE},
+    color::{Color, GRAY, WHITE},
     math::{Rect, Vec2},
     miniquad::window::set_window_size,
     rand,
@@ -34,6 +34,51 @@ const WOBBLE_FRAMES: usize = 3;
 
 const PARTICLE_SPAWN_MIN_PERIOD: f64 = 0.05;
 const PARTICLE_SPAWN_MAX_PERIOD: f64 = 0.30;
+
+struct Font {
+    texture: Texture2D,
+}
+
+impl Font {
+    const WIDTH: f32 = 8.;
+    const HEIGHT: f32 = 12.;
+    const FONT_PATH: &str = "assets/font.png";
+    const ALPH: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+    async fn new() -> Result<Self, String> {
+        let texture = load_texture(Font::FONT_PATH)
+            .await
+            .map_err(|e| format!("could not load texture {}: {e}", Self::FONT_PATH))?;
+        texture.set_filter(FilterMode::Nearest);
+        Ok(Self { texture })
+    }
+
+    fn draw(&self, x: f32, y: f32, scale: f32, text: &str) {
+        let size = Vec2::new(Self::WIDTH, Self::HEIGHT) * scale;
+        let mut curr_x = x;
+        for c in text.chars() {
+            if c.is_whitespace() {
+                curr_x += 12.;
+                continue;
+            }
+            if let Some(index) = Self::ALPH.find(c.to_ascii_uppercase()) {
+                let source = Some(Rect {
+                    x: index as f32 * Self::WIDTH,
+                    y: 0.,
+                    w: Self::WIDTH,
+                    h: Self::HEIGHT,
+                });
+                let params = DrawTextureParams {
+                    source,
+                    dest_size: Some(size),
+                    ..Default::default()
+                };
+                draw_texture_ex(&self.texture, curr_x, y, GRAY, params);
+            }
+            curr_x += size.x + 2.;
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 enum ParticleKind {
@@ -123,6 +168,7 @@ pub struct Viewer {
     textures: HashMap<String, Texture2D>,
     particles: Vec<Particle>,
     next_spawn: f64,
+    font: Font,
 }
 
 impl Viewer {
@@ -133,6 +179,7 @@ impl Viewer {
             textures: HashMap::new(),
             particles: Vec::new(),
             next_spawn: 0.,
+            font: Font::new().await?,
         };
         viewer.store_texture("sprites", "assets/sprites.png").await?;
         viewer.store_texture("words", "assets/words.png").await?;
@@ -176,10 +223,9 @@ impl Viewer {
         let grid = game.current_level().grid();
         let layout = Layout::new(grid, Vec2::new(screen_width(), screen_height()));
         self.draw_background(&layout);
-        self.draw_caption(game);
+        self.draw_caption(game, &layout);
         self.draw_units(grid, &layout, time);
         self.draw_particles(&layout, time);
-        draw_text(format!("{}", get_fps()), 0., 20., 32., WHITE);
     }
 
     async fn store_texture(&mut self, key: &str, path: &str) -> Result<(), String> {
@@ -197,10 +243,12 @@ impl Viewer {
         draw_rectangle(origin.x, origin.y, grid_size.x, grid_size.y, GRID_COLOR);
     }
 
-    fn draw_caption(&self, game: &Game) {
-        if let Some(caption) = game.caption() {
-            draw_text(caption, 0., 40., 64., WHITE);
-        }
+    fn draw_caption(&self, game: &Game, layout: &Layout) {
+        let caption = game.caption().unwrap_or("This is a test string 0123456789");
+        // if let Some(caption) = game.caption() {
+        let scale = 2.;
+        self.font.draw(0., 0., scale, caption);
+        // }
     }
 
     fn draw_units(&self, grid: &Grid, layout: &Layout, time: f64) {
@@ -336,6 +384,5 @@ fn sprite_facing(direction: Direction, facing: Facing) -> (usize, bool) {
     match facing {
         Facing::Fixed => (0, false),
         Facing::Directional => (direction_index(direction), direction == Direction::West),
-        _ => (0, false),
     }
 }
