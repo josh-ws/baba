@@ -4,83 +4,39 @@ Root = map
 [map]
 Name = Test Map
 Kind = map
-Link = 0,2 sink
-Link = 3,2 has
-Link = 4,2 small
-Link = 5,2 where
-Link = 6,2 test-level
-Link = 7,2 move-test
+Link = 1,1 dev
+Link = 2,1 temple
 Data =
-CU IS SE .. .. .. .. ..
-.. .. .. .. .. .. .. ..
-le pa pa le le le le cu/le
+CU IS SE
+pa le cu/le
 
-[move-test]
-Name = Movement test
+[dev]
+Name = Dev Test Level
 Data =
-BA IS YO RO IS MO RO IS PU
-.. .. .. .. .. .. .. .. ..
-.. .. .. .. .. .. .. .. ..
-ba .. .. .. .. .. ro .. ..
-.. .. .. .. .. .. BA IS PU
+WT IS PU .. .. .. .. .. BA IS YO
+.. .. .. .. .. .. wt .. .. .. ..
+.. .. .. .. .. wt wt .. .. ba ..
+.. wt wt wt .. wt .. .. .. .. ..
+.. wt wt wt .. wt .. wt wt wt ..
+.. wt wt wt .. .. .. .. .. .. ..
+.. .. .. .. .. .. .. wt .. .. ..
+.. .. .. .. .. .. .. .. .. .. ..
+.. .. .. .. .. .. la .. .. .. ..
+.. .. .. .. .. la la .. .. .. ..
+.. la la la .. la .. .. .. .. ..
+.. la la la .. la .. la la la ..
+.. la la la .. .. .. .. .. .. ..
+.. .. .. .. .. .. .. la .. .. ..
+LA IS PU .. .. .. .. .. .. .. ..
 
-
-[has]
-Name = Has Test!
+[temple]
+Name = Sunken Temple
 Data =
-BA IS YO WT IS SI RO IS DE
-.. .. .. .. .. .. .. .. ..
-.. .. .. .. .. .. ro .. ..
-.. .. ba .. .. .. .. .. ..
-.. .. .. .. .. .. wt .. ..
-.. .. .. .. .. .. .. .. ..
-.. .. BA .. .. WA .. .. ..
-BA HA .. BA HA .. .. .. ..
-
-[sink]
-Name = Sink!
-Data =
-BA IS YO .. FL IS WI
-.. .. .. .. .. .. ..
-.. ba .. .. wa wa wa
-.. .. .. .. wa .. ..
-.. .. ro .. wt .. fl
-.. .. .. .. wa .. ..
-.. .. .. .. wa wa wa
-.. .. .. .. .. .. ..
-RO .. IS PU WT IS SI
-
-
-
-[test-level]
-Name = Test Level
-Data =
-BA IS YO WT IS DE
-.. ba .. .. wt ..
-
-[small]
-Name = Small
-Data =
-KE IS YO FL IS WI
-.. ke .. .. fl ..
-
-[where]
-Name = Where do I go?
-Data =
-.. .. .. .. .. .. .. .. .. .. .. .. .. ..
-.. .. .. .. .. wa wa wa wa wa wa wa wa ..
-.. .. .. .. .. wa .. .. .. .. .. .. wa ..
-.. .. .. .. .. wa .. IS .. .. .. .. wa ..
-.. .. .. .. .. wa .. .. .. .. .. .. wa ..
-.. wa wa wa wa wa .. .. .. .. WI .. wa ..
-.. wa .. .. .. .. .. .. .. .. .. .. wa ..
-.. wa .. FL .. .. .. fl .. .. .. .. wa ..
-.. wa .. .. .. .. .. .. .. .. .. .. wa ..
-.. wa wa wa wa wa wa wa wa wa wa wa wa ..
-.. .. .. .. .. wa .. .. .. .. .. .. wa ..
-.. .. BA .. .. wa .. WA .. .. .. .. wa ..
-.. .. IS .. .. wa .. IS .. .. ba .. wa ..
-.. .. YO .. .. wa .. ST .. .. .. .. wa ..
-.. .. .. .. .. wa .. .. .. .. .. .. wa ..
-.. .. .. .. .. wa wa wa wa wa wa wa wa ..
-.. .. .. .. .. .. .. .. .. .. .. .. .. ..
+.. .. .. .. .. .. .. .. wa wa wa wa wa wa wa
+.. .. .. ba .. .. .. .. ro ke .. WT FL .. KE
+.. .. BA IS YO .. .. .. wa .. .. wa IS IS IS
+.. .. .. .. .. .. .. .. wa .. .. wa DE WI PU
+.. .. .. .. wa wa wa wa wa .. .. wa wa wa wa
+.. .. .. .. wa .. .. .. wa .. .. .. .. .. wa
+.. .. .. .. wt .. fl .. wa .. RO IS PU .. wa
+WA IS ST wa wa .. .. .. wa .. .. .. .. .. wa

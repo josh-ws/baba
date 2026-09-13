@@ -4,6 +4,7 @@ use crate::world::Direction;
 pub enum Atlas {
     Sprites,
     Words,
+    Tiled,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -67,6 +68,19 @@ const fn object(noun: Noun, code: &'static str, row: usize, facing: Facing, grou
     }
 }
 
+const fn tiled(noun: Noun, code: &'static str, row: usize, group: UnitGroup) -> UnitTypeData {
+    UnitTypeData {
+        kind: UnitKind::Object(noun),
+        code,
+        sprite: Sprite {
+            atlas: Atlas::Tiled,
+            facing: Facing::Fixed,
+            row,
+        },
+        group,
+    }
+}
+
 const UNIT_TYPES: &[UnitTypeData] = &[
     word(Text::Noun(Noun::Baba), "BA", 0),
     word(Text::Noun(Noun::Flag), "FL", 1),
@@ -87,6 +101,7 @@ const UNIT_TYPES: &[UnitTypeData] = &[
     word(Text::Noun(Noun::Key), "KE", 16),
     word(Text::Property(Property::Move), "MO", 17),
     word(Text::Property(Property::Auto), "AU", 18),
+    word(Text::Noun(Noun::Lava), "LA", 19),
     object(Noun::Baba, "ba", 0, Facing::Directional, UnitGroup::Characters),
     object(Noun::Flag, "fl", 1, Facing::Fixed, UnitGroup::Item),
     object(Noun::Rock, "ro", 2, Facing::Fixed, UnitGroup::Item),
@@ -94,8 +109,9 @@ const UNIT_TYPES: &[UnitTypeData] = &[
     object(Noun::Cursor, "cu", 4, Facing::Fixed, UnitGroup::Text),
     object(Noun::Level, "le", 5, Facing::Fixed, UnitGroup::Ground),
     object(Noun::Path, "pa", 6, Facing::Fixed, UnitGroup::Ground),
-    object(Noun::Water, "wt", 7, Facing::Fixed, UnitGroup::Liquid),
     object(Noun::Key, "ke", 8, Facing::Fixed, UnitGroup::Item),
+    tiled(Noun::Water, "wt", 1, UnitGroup::Liquid),
+    tiled(Noun::Lava, "la", 4, UnitGroup::Liquid),
 ];
 
 pub fn lookup_unit(kind: UnitKind) -> &'static UnitTypeData {
@@ -118,6 +134,7 @@ pub enum Noun {
     Path,
     Water,
     Key,
+    Lava,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

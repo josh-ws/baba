@@ -17,7 +17,7 @@ use baba::{
     game::Game,
     lex::lex,
     rule::{Rules, parse},
-    unit::{Atlas, Facing, Property, Unit, lookup_unit},
+    unit::{Atlas, Facing, Noun, Property, Unit, lookup_unit},
     world::{
         Direction::{self},
         Grid, Pos,
@@ -137,6 +137,7 @@ impl Viewer {
         viewer.store_texture("sprites", "assets/sprites.png").await?;
         viewer.store_texture("words", "assets/words.png").await?;
         viewer.store_texture("particles", "assets/particles.png").await?;
+        viewer.store_texture("tiles", "assets/tiles.png").await?;
         Ok(viewer)
     }
 
@@ -207,18 +208,19 @@ impl Viewer {
         let mut units = grid.units_with_pos().collect::<Vec<(Pos, &Unit)>>();
         units.sort_unstable_by_key(|(_, unit)| lookup_unit(unit.kind()).group);
         for (pos, unit) in units {
-            self.draw_unit(unit, pos, layout, wobble);
+            self.draw_unit(grid, unit, pos, layout, wobble);
         }
     }
 
-    fn draw_unit(&self, unit: &Unit, pos: Pos, layout: &Layout, wobble: usize) {
+    fn draw_unit(&self, grid: &Grid, unit: &Unit, pos: Pos, layout: &Layout, wobble: usize) {
         let data = lookup_unit(unit.kind());
         let texture = self.atlas_texture(&data.sprite.atlas);
-        let (column, flip_x) = sprite_column(data.sprite.atlas, data.sprite.facing, unit.direction(), wobble);
+        let (column, flip_x) = sprite_column(grid, unit, pos, wobble);
+        let row = sprite_row(unit, wobble);
         let params = DrawTextureParams {
             source: Some(Rect {
                 x: column as f32 * TILE_SIZE,
-                y: data.sprite.row as f32 * TILE_SIZE,
+                y: row as f32 * TILE_SIZE,
                 w: TILE_SIZE,
                 h: TILE_SIZE,
             }),
@@ -234,6 +236,7 @@ impl Viewer {
         match atlas {
             Atlas::Sprites => &self.textures["sprites"],
             Atlas::Words => &self.textures["words"],
+            Atlas::Tiled => &self.textures["tiles"],
         }
     }
 
@@ -295,18 +298,44 @@ fn direction_index(direction: Direction) -> usize {
     }
 }
 
+// TODO(jw) PERF: Should this be a cached property on the unit?
+fn tiled_index(grid: &Grid, pos: Pos, noun: Noun) -> usize {
+    const DIRS: [Direction; 4] = [Direction::East, Direction::North, Direction::West, Direction::South];
+    let mut index = 0;
+    for (i, dir) in DIRS.iter().enumerate() {
+        let shift = pos.shift(*dir);
+        if !grid.in_bounds(shift) || grid.at(shift).units().iter().any(|u| u.noun() == noun) {
+            index |= 1 << i;
+        }
+    }
+    index
+}
+
+/// Returns column from the spritesheet for this sprite, and whether or not it should be drawn flipped
+fn sprite_column(grid: &Grid, unit: &Unit, pos: Pos, wobble: usize) -> (usize, bool) {
+    let data = lookup_unit(unit.kind());
+    match data.sprite.atlas {
+        Atlas::Words => (wobble, false),
+        Atlas::Tiled => (tiled_index(grid, pos, unit.noun()), false),
+        Atlas::Sprites => {
+            let (dir, flip) = sprite_facing(unit.direction(), data.sprite.facing);
+            (wobble * 3 + dir, flip)
+        }
+    }
+}
+
+fn sprite_row(unit: &Unit, wobble: usize) -> usize {
+    let data = lookup_unit(unit.kind());
+    match data.sprite.atlas {
+        Atlas::Sprites | Atlas::Words => data.sprite.row,
+        Atlas::Tiled => data.sprite.row + wobble,
+    }
+}
+
 fn sprite_facing(direction: Direction, facing: Facing) -> (usize, bool) {
     match facing {
         Facing::Fixed => (0, false),
         Facing::Directional => (direction_index(direction), direction == Direction::West),
+        _ => (0, false),
     }
-}
-
-fn sprite_column(atlas: Atlas, facing: Facing, direction: Direction, wobble: usize) -> (usize, bool) {
-    let (dir, flip) = sprite_facing(direction, facing);
-    let stride = match atlas {
-        Atlas::Sprites => 3,
-        Atlas::Words => 1,
-    };
-    (wobble * stride + dir, flip)
 }
