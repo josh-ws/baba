@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 
 use macroquad::{
-    color::{Color, GRAY, LIGHTGRAY, WHITE},
+    color::{Color, LIGHTGRAY, WHITE},
     math::{Rect, Vec2},
     miniquad::window::set_window_size,
     rand,
     shapes::draw_rectangle,
-    text::draw_text,
     texture::{DrawTextureParams, FilterMode, Texture2D, draw_texture_ex, load_texture},
-    time::{get_fps, get_time},
+    time::get_time,
     window::{clear_background, screen_height, screen_width},
 };
 
@@ -223,7 +222,7 @@ impl Viewer {
         let grid = game.current_level().grid();
         let layout = Layout::new(grid, Vec2::new(screen_width(), screen_height()));
         self.draw_background(&layout);
-        self.draw_caption(game, &layout);
+        self.draw_caption(game);
         self.draw_units(grid, &layout, time);
         self.draw_particles(&layout, time);
     }
@@ -243,7 +242,7 @@ impl Viewer {
         draw_rectangle(origin.x, origin.y, grid_size.x, grid_size.y, GRID_COLOR);
     }
 
-    fn draw_caption(&self, game: &Game, layout: &Layout) {
+    fn draw_caption(&self, game: &Game) {
         if let Some(caption) = game.caption() {
             let scale = 2.;
             self.font.draw(0., 0., scale, caption);

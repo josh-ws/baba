@@ -11,16 +11,17 @@ use crate::{
 #[derive(Debug)]
 pub struct Game {
     pack: Levelpack,
-    current_level: String,
     selected: Vec<u64>,
+    visited: Vec<String>,
 }
 
 impl Game {
     pub fn new(pack: Levelpack) -> Self {
+        let root = pack.root().to_string();
         let mut game = Self {
-            current_level: pack.root().to_string(),
             pack,
             selected: Vec::new(),
+            visited: vec![root],
         };
         game.update_selected();
         game
@@ -32,12 +33,22 @@ impl Game {
     }
 
     pub fn reload(&mut self, path: &str) -> Result<(), String> {
+        let root = self.visited.first().expect("visited cannot be empty");
         self.pack = Game::read_pack(path)?;
-        if !self.pack.has_level(&self.current_level) {
-            self.return_to_root();
-        } else {
-            self.update_selected();
+
+        // new pack does not have the root. construct a new root
+        if !self.pack.has_level(root) {
+            let root = &self.pack.root().to_string();
+            self.visited.clear();
+            self.goto(root);
         }
+
+        // new pack has removed, or renamed, levels in our path
+        if let Some(i) = self.visited.iter().position(|k| !self.pack.has_level(k)) {
+            self.visited.truncate(i);
+        }
+
+        self.update_selected();
         Ok(())
     }
 
@@ -47,19 +58,17 @@ impl Game {
     }
 
     pub fn current_level(&self) -> &Level {
-        self.pack
-            .get_level(&self.current_level)
-            .expect("current_level is checked")
+        let current = self.visited.last().expect("empty visited");
+        self.pack.get_level(current).expect("current_level is checked")
     }
 
     pub fn current_level_mut(&mut self) -> &mut Level {
-        self.pack
-            .get_level_mut(&self.current_level)
-            .expect("current_level is checked")
+        let current = self.visited.last().expect("empty visited");
+        self.pack.get_level_mut(current).expect("current_level is checked")
     }
 
     pub fn current_key(&self) -> &str {
-        &self.current_level
+        self.visited.last().expect("empty visited")
     }
 
     pub fn update(&mut self, dir: Direction) -> Vec<Event> {
@@ -67,7 +76,7 @@ impl Game {
         self.selected = result.selected;
         if result.status == TurnStatus::Win {
             println!("You win!");
-            self.return_to_root();
+            self.return_to_parent();
         }
         result.events
     }
@@ -92,14 +101,16 @@ impl Game {
         true
     }
 
-    pub fn return_to_root(&mut self) {
-        let root = self.pack.root().to_string();
-        self.goto(&root)
+    pub fn return_to_parent(&mut self) {
+        if self.visited.len() > 1 {
+            self.visited.pop();
+            self.update_selected();
+        }
     }
 
     fn goto(&mut self, key: &str) {
         debug_assert!(self.pack.get_level(key).is_some());
-        self.current_level = key.to_string();
+        self.visited.push(key.to_string());
         self.update_selected();
     }
 

@@ -4,15 +4,45 @@ Root = root
 [root]
 Name = Hub World
 Kind = map
-Link = 4,1 test-levels
+Link = 1,2 test-levels
+Link = 4,2 puzzles
 Data =
-.. ba    .. .. .. ..
-.. ..    .. pa le ..
-.. cu/le pa pa .. ..
-.. ..    .. pa le ..
-.. ..    .. .. .. wt
+wt ..    .. .. wt wt
+.. ..    .. .. .. ..
+.. cu/le pa pa le ..
+.. ..    .. .. .. ..
 .. ..    .. .. wt wt
-WT IS    SI BA IS YO
+.. ..    .. wt wt wt
+
+[puzzles]
+Name = My Puzzles
+Kind = map
+Link = 2,4 paths
+Data =
+.. .. ..    .. .. .. wt wt wt wt
+.. .. ..    .. .. .. .. wt wt wt
+.. .. ..    .. .. .. .. .. .. wt
+.. .. ..    .. .. .. .. .. .. wt
+.. .. cu/le pa pa pa le .. .. wt
+.. .. ..    .. .. .. le le .. ..
+.. .. ..    .. .. .. le le le ..
+.. .. ..    .. .. .. .. .. .. ..
+.. .. ..    .. .. .. .. .. .. ..
+
+[paths]
+Name = Two Paths
+Data =
+.. WT IS .. wa wa wa WT IS SI FL IS WI
+.. LA IS DE wa .. wa wa wa wa wa wa wa
+.. wa wa .. wa .. .. .. .. .. .. .. ..
+.. .. .. .. .. .. .. .. .. .. .. .. ..
+.. .. .. .. .. .. .. .. BA IS YO .. ..
+.. .. RO IS .. .. wa wa wa wa wa wa wa
+.. .. .. .. .. .. ro wt wt wt wt wt fl
+.. .. .. ba .. .. wa wa wa wa wa wa wa
+.. .. .. .. .. .. ro la la la la la fl
+.. .. .. wa wa wa wa wa wa wa wa wa wa
+.. .. .. wa RO IS PU LA IS SI WA IS ST
 
 [test-levels]
 Name = Dev Test Levels

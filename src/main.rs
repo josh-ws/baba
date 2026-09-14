@@ -62,7 +62,7 @@ async fn main() -> Result<(), String> {
             Some(Action::EnterLevel) => {
                 game.enter_link();
             }
-            Some(Action::BackOutOfLevel) => game.return_to_root(),
+            Some(Action::BackOutOfLevel) => game.return_to_parent(),
             Some(Action::Refresh) => {
                 if let Err(e) = game.reload(PACK_SRC) {
                     eprintln!("could not reload pack: {e}")
