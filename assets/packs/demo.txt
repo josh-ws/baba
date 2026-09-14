@@ -1,17 +1,32 @@
 Pack = Demo Pack
-Root = map
+Root = root
 
-[map]
-Name = Test Map
+[root]
+Name = Hub World
 Kind = map
-Link = 1,1 dev
-Link = 2,1 temple
+Link = 4,1 test-levels
 Data =
-CU IS SE
-pa le cu/le
+.. ba    .. .. .. ..
+.. ..    .. pa le ..
+.. cu/le pa pa .. ..
+.. ..    .. pa le ..
+.. ..    .. .. .. wt
+.. ..    .. .. wt wt
+WT IS    SI BA IS YO
 
-[dev]
-Name = Dev Test Level
+[test-levels]
+Name = Dev Test Levels
+Kind = map
+Link = 2,2 liquid
+Data =
+wt wt wt    .. .. .. la
+wt wt ..    .. .. .. ..
+wt .. cu/le le le .. ..
+wt .. ..    .. .. .. wt
+.. .. ..    .. .. wt wt
+
+[liquid]
+Name = Liquid Test
 Data =
 WT IS PU .. .. .. .. .. BA IS YO
 .. .. .. .. .. .. wt .. .. .. ..
@@ -28,15 +43,3 @@ WT IS PU .. .. .. .. .. BA IS YO
 .. la la la .. .. .. .. .. .. ..
 .. .. .. .. .. .. .. la .. .. ..
 LA IS PU .. .. .. .. .. .. .. ..
-
-[temple]
-Name = Sunken Temple
-Data =
-.. .. .. .. .. .. .. .. wa wa wa wa wa wa wa
-.. .. .. ba .. .. .. .. ro ke .. WT FL .. KE
-.. .. BA IS YO .. .. .. wa .. .. wa IS IS IS
-.. .. .. .. .. .. .. .. wa .. .. wa DE WI PU
-.. .. .. .. wa wa wa wa wa .. .. wa wa wa wa
-.. .. .. .. wa .. .. .. wa .. .. .. .. .. wa
-.. .. .. .. wt .. fl .. wa .. RO IS PU .. wa
-WA IS ST wa wa .. .. .. wa .. .. .. .. .. wa

@@ -25,6 +25,11 @@ const INHERENT: &[Rule] = &[
         operator: Operator::Is,
         complement: Complement::Property(Property::Stop),
     },
+    Rule {
+        subject: Noun::Cursor,
+        operator: Operator::Is,
+        complement: Complement::Property(Property::Select),
+    },
 ];
 
 impl Rules {

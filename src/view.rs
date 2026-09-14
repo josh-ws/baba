@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use macroquad::{
-    color::{Color, GRAY, WHITE},
+    color::{Color, GRAY, LIGHTGRAY, WHITE},
     math::{Rect, Vec2},
     miniquad::window::set_window_size,
     rand,
@@ -73,9 +73,9 @@ impl Font {
                     dest_size: Some(size),
                     ..Default::default()
                 };
-                draw_texture_ex(&self.texture, curr_x, y, GRAY, params);
+                draw_texture_ex(&self.texture, curr_x, y, LIGHTGRAY, params);
             }
-            curr_x += size.x + 2.;
+            curr_x += size.x + 3.;
         }
     }
 }
@@ -244,11 +244,10 @@ impl Viewer {
     }
 
     fn draw_caption(&self, game: &Game, layout: &Layout) {
-        let caption = game.caption().unwrap_or("This is a test string 0123456789");
-        // if let Some(caption) = game.caption() {
-        let scale = 2.;
-        self.font.draw(0., 0., scale, caption);
-        // }
+        if let Some(caption) = game.caption() {
+            let scale = 2.;
+            self.font.draw(0., 0., scale, caption);
+        }
     }
 
     fn draw_units(&self, grid: &Grid, layout: &Layout, time: f64) {
@@ -352,7 +351,13 @@ fn tiled_index(grid: &Grid, pos: Pos, noun: Noun) -> usize {
     let mut index = 0;
     for (i, dir) in DIRS.iter().enumerate() {
         let shift = pos.shift(*dir);
-        if !grid.in_bounds(shift) || grid.at(shift).units().iter().any(|u| u.noun() == noun) {
+        let joins = || {
+            grid.at(shift)
+                .units()
+                .iter()
+                .any(|u| u.noun() == noun || u.noun() == Noun::Level)
+        };
+        if !grid.in_bounds(shift) || joins() {
             index |= 1 << i;
         }
     }
