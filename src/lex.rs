@@ -4,6 +4,7 @@ use crate::{
 };
 
 const MIN_RULE_LENGTH: usize = 3;
+const MAX_READINGS: usize = 3000;
 
 pub type Slot = Vec<Text>;
 
@@ -31,6 +32,27 @@ impl Run {
 
     pub fn slots(&self) -> &Vec<Slot> {
         &self.slots
+    }
+
+    pub fn variants(&self) -> Vec<Vec<Text>> {
+        let count = self
+            .slots()
+            .iter()
+            .fold(1 as usize, |n, slot| n.saturating_mul(slot.len()));
+        if count > MAX_READINGS {
+            return Vec::new();
+        }
+        let mut lines = vec![vec![]];
+        for slot in &self.slots {
+            let mut next = Vec::new();
+            for line in &lines {
+                for word in slot {
+                    next.push([line.as_slice(), &[*word]].concat());
+                }
+            }
+            lines = next;
+        }
+        lines
     }
 }
 
@@ -67,8 +89,12 @@ pub fn lex(grid: &Grid) -> Vec<Run> {
 }
 
 #[cfg(test)]
+#[rustfmt::skip]
 mod tests {
-    use crate::world::Grid;
+    use crate::{
+        unit::{Noun, Operator, Property},
+        world::Grid,
+    };
 
     use super::*;
 
@@ -109,5 +135,22 @@ mod tests {
     #[test]
     fn lex_stacked_text_dedupes() {
         assert_lex_match("BA/BA IS YO", vec!["BA IS YO"]);
+    }
+
+    #[test]
+    fn variants() {
+        let run = Run {
+            slots: vec![
+                vec![Text::Noun(Noun::Baba), Text::Noun(Noun::Key)],
+                vec![Text::Operator(Operator::Is)],
+                vec![Text::Property(Property::You), Text::Property(Property::Push)],
+            ],
+        };
+        let variants = run.variants();
+        assert_eq!(4, variants.len());
+        assert_eq!("[Noun(Baba), Operator(Is), Property(You)]",format!("{:?}", variants[0]));
+        assert_eq!("[Noun(Baba), Operator(Is), Property(Push)]",format!("{:?}", variants[1]));
+        assert_eq!("[Noun(Key), Operator(Is), Property(You)]", format!("{:?}", variants[2]));
+        assert_eq!("[Noun(Key), Operator(Is), Property(Push)]", format!("{:?}", variants[3]));
     }
 }
