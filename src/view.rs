@@ -15,7 +15,8 @@ use baba::{
     eval::{Cause, Event},
     game::Game,
     lex::lex,
-    rule::{Rules, parse},
+    parse::parse,
+    rule::Rules,
     unit::{Atlas, Facing, Noun, Property, Unit, lookup_unit},
     world::{
         Direction::{self},
