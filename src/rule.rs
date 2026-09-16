@@ -5,7 +5,7 @@ use crate::{
     unit::{Noun, Operator, Property, Text},
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Complement {
     Noun(Noun),
     Property(Property),
@@ -67,6 +67,74 @@ impl Deref for Rules {
     }
 }
 
+#[derive(Debug)]
+struct Sentence {
+    subjects: Vec<Noun>,
+    complements: Vec<(Operator, Complement)>,
+}
+
+impl Sentence {
+    fn new() -> Self {
+        Self {
+            subjects: Vec::new(),
+            complements: Vec::new(),
+        }
+    }
+
+    fn rules(&self) -> Vec<Rule> {
+        let mut rules = Vec::new();
+        for subject in &self.subjects {
+            for (op, complement) in &self.complements {
+                rules.push(Rule::new(*subject, *op, *complement));
+            }
+        }
+        rules
+    }
+}
+
+enum State {
+    Subject,                  // start, or after AND between subjects
+    PostSubject,              // AND, or an operator
+    Complement(Operator),     // after an operator
+    PostComplement(Operator), // AND, or the sentence is over
+    PostAnd(Operator),        // after AND between complements
+}
+
+fn sentence(words: &[Text]) -> Option<(Sentence, usize)> {
+    let mut sentence = Sentence::new();
+    let mut len = 0;
+    let mut state = State::Subject;
+    for (i, &word) in words.iter().enumerate() {
+        state = match (state, word) {
+            (State::Subject, Text::Noun(noun)) => {
+                sentence.subjects.push(noun);
+                State::PostSubject
+            }
+            (State::PostSubject, Text::And) => State::Subject,
+            (State::PostSubject | State::PostAnd(_), Text::Operator(op)) => State::Complement(op),
+            (State::Complement(op) | State::PostAnd(op), word) => match complement(op, word) {
+                Some(c) => {
+                    sentence.complements.push((op, c));
+                    len = i + 1;
+                    State::PostComplement(op)
+                }
+                None => break,
+            },
+            (State::PostComplement(op), Text::And) => State::PostAnd(op),
+            _ => break,
+        }
+    }
+    if len > 0 { Some((sentence, len)) } else { None }
+}
+
+fn complement(op: Operator, word: Text) -> Option<Complement> {
+    match (word, op) {
+        (Text::Noun(n), _) => Some(Complement::Noun(n)),
+        (Text::Property(p), Operator::Is) => Some(Complement::Property(p)),
+        _ => None,
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Rule {
     pub subject: Noun,
@@ -87,70 +155,26 @@ impl Rule {
 pub fn parse(runs: &[Run]) -> Rules {
     let mut rules = Rules::new();
     for run in runs {
-        for start in 0..run.len() {
-            for (rule, _) in rule_at(run, start) {
-                rules.add(rule);
+        for variant in run.variants() {
+            let mut start = 0;
+            while start < variant.len() {
+                match sentence(&variant[start..]) {
+                    Some((sentence, len)) => {
+                        for rule in sentence.rules() {
+                            rules.add(rule);
+                        }
+                        start += len - 1;
+                    }
+                    None => start += 1,
+                }
             }
         }
     }
     rules
 }
 
-fn rule_at(run: &Run, i: usize) -> Vec<(Rule, usize)> {
-    let mut out = Vec::new();
-    for (subject, j) in noun_at(run, i) {
-        for (operator, k) in operator_at(run, j) {
-            for (complement, l) in complement_at(run, k, operator) {
-                out.push((Rule::new(subject, operator, complement), l));
-            }
-        }
-    }
-    out
-}
-
-fn noun_at(run: &Run, i: usize) -> Vec<(Noun, usize)> {
-    match run.slot(i) {
-        Some(t) => t
-            .iter()
-            .filter_map(|t| match t {
-                Text::Noun(n) => Some((*n, i + 1)),
-                _ => None,
-            })
-            .collect(),
-        None => Vec::new(),
-    }
-}
-
-fn operator_at(run: &Run, i: usize) -> Vec<(Operator, usize)> {
-    match run.slot(i) {
-        Some(t) => t
-            .iter()
-            .filter_map(|t| match t {
-                Text::Operator(n) => Some((*n, i + 1)),
-                _ => None,
-            })
-            .collect(),
-        None => Vec::new(),
-    }
-}
-
-fn complement_at(run: &Run, i: usize, op: Operator) -> Vec<(Complement, usize)> {
-    match run.slot(i) {
-        Some(t) => t
-            .iter()
-            .filter_map(|t| match (t, op) {
-                (Text::Noun(n), _) => Some((Complement::Noun(*n), i + 1)),
-                (Text::Property(p), Operator::Is) => Some((Complement::Property(*p), i + 1)),
-                _ => None,
-            })
-            .collect(),
-        None => Vec::new(),
-    }
-}
-
 #[cfg(test)]
 mod tests {
-
     use crate::{lex::lex, world::Grid};
 
     use super::*;

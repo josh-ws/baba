@@ -35,10 +35,7 @@ impl Run {
     }
 
     pub fn variants(&self) -> Vec<Vec<Text>> {
-        let count = self
-            .slots()
-            .iter()
-            .fold(1 as usize, |n, slot| n.saturating_mul(slot.len()));
+        let count = self.slots().iter().fold(1usize, |n, slot| n.saturating_mul(slot.len()));
         if count > MAX_READINGS {
             return Vec::new();
         }

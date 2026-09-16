@@ -44,16 +44,29 @@ Data =
 .. .. .. wa wa wa wa wa wa wa wa wa wa
 .. .. .. wa RO IS PU LA IS SI WA IS ST
 
+
 [test-levels]
 Name = Dev Test Levels
 Kind = map
 Link = 2,2 liquid
+Link = 3,2 and
 Data =
 wt wt wt    .. .. .. la
 wt wt ..    .. .. .. ..
 wt .. cu/le le le .. ..
 wt .. ..    .. .. .. wt
 .. .. ..    .. .. wt wt
+
+[and]
+Name = And
+Data =
+BA AN RO AN FL IS YO AN PU AN ST
+.. .. .. .. .. .. .. .. .. .. ..
+.. .. .. .. .. ro .. .. .. .. ..
+.. .. .. .. .. .. .. .. .. .. ..
+.. .. ba .. .. .. .. .. fl .. ..
+.. .. .. .. .. .. .. .. .. .. ..
+
 
 [liquid]
 Name = Liquid Test

@@ -102,6 +102,7 @@ const UNIT_TYPES: &[UnitTypeData] = &[
     word(Text::Property(Property::Move), "MO", 17),
     word(Text::Property(Property::Auto), "AU", 18),
     word(Text::Noun(Noun::Lava), "LA", 19),
+    word(Text::And, "AN", 20),
     object(Noun::Baba, "ba", 0, Facing::Directional, UnitGroup::Characters),
     object(Noun::Flag, "fl", 1, Facing::Fixed, UnitGroup::Item),
     object(Noun::Rock, "ro", 2, Facing::Fixed, UnitGroup::Item),
@@ -161,6 +162,7 @@ pub enum Text {
     Noun(Noun),
     Operator(Operator),
     Property(Property),
+    And,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
