@@ -2,11 +2,12 @@ use std::collections::HashSet;
 
 use crate::{
     lex::lex,
+    parse::parse,
     query::{
         UnitRef, any_cell_has, cell_has, query_defeat, query_has, query_is_noun, query_is_property, query_selected,
         query_sink,
     },
-    rule::{Rules, parse},
+    rule::Rules,
     unit::{
         Property::{self},
         UnitKind,
@@ -584,5 +585,11 @@ mod tests {
         expect_status("RO IS AU RO IS WI BA IS YO ro ba", "^", TurnStatus::Win);
         expect("RO IS AU RO IS WI BA IS YO ro ba", "^", "RO IS AU RO IS WI BA IS YO .. ba/ro");
         expect("RO IS AU BA IS YO WT IS SI ro ba/wt", "^", "RO IS AU BA IS YO WT IS SI .. ..");
+    }
+
+    #[test]
+    #[ignore = "needs a rewrite of movement"]
+    fn you_moves_before_stop() {
+        expect("BA AN FL IS YO AN ST ba fl .. ..", ">", "BA AN FL IS YO AN ST .. ba fl ..");
     }
 }

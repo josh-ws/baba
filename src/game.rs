@@ -3,8 +3,8 @@ use crate::{
     level::Level,
     lex::lex,
     pack::Levelpack,
+    parse::parse,
     query::query_selected,
-    rule::parse,
     world::Direction,
 };
 
