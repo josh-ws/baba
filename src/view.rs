@@ -32,8 +32,7 @@ const GRID_COLOR: Color = Color::new(0.1, 0.1, 0.25, 1.);
 const WOBBLE_PERIOD: f64 = 0.20;
 const WOBBLE_FRAMES: usize = 3;
 
-const PARTICLE_SPAWN_MIN_PERIOD: f64 = 0.05;
-const PARTICLE_SPAWN_MAX_PERIOD: f64 = 0.30;
+const PARTICLE_SPAWN_PERIOD: f64 = 0.3;
 
 struct Font {
     texture: Texture2D,
@@ -85,6 +84,8 @@ enum ParticleKind {
     Sparkle,
     Splash,
     Explode,
+    Steam,
+    Melt,
 }
 
 struct Particle {
@@ -122,6 +123,22 @@ impl Particle {
                 birth: now,
                 frames: 4,
                 period: 0.05,
+            },
+            ParticleKind::Steam => Self {
+                tile_size: Vec2::new(16., 16.),
+                tile_offset: Vec2::new(0., 32.),
+                pos: origin,
+                birth: now,
+                frames: 6,
+                period: 0.15,
+            },
+            ParticleKind::Melt => Self {
+                tile_size: Vec2::new(16., 16.),
+                tile_offset: Vec2::new(0., 48.),
+                pos: origin,
+                birth: now,
+                frames: 6,
+                period: 0.04,
             },
         }
     }
@@ -200,7 +217,7 @@ impl Viewer {
             let grid = game.current_level().grid();
             let rules = parse(&lex(grid));
             self.spawn_ambient(grid, &rules, time);
-            self.next_spawn = time + rand::gen_range(PARTICLE_SPAWN_MIN_PERIOD, PARTICLE_SPAWN_MAX_PERIOD);
+            self.next_spawn = time + PARTICLE_SPAWN_PERIOD;
         }
         if !switched {
             for event in events {
@@ -209,6 +226,7 @@ impl Viewer {
                         let kind = match cause {
                             Cause::Defeat => ParticleKind::Explode,
                             Cause::Sink => ParticleKind::Splash,
+                            Cause::Melt => ParticleKind::Melt,
                         };
                         self.burst(kind, *pos, time);
                     }
@@ -288,26 +306,34 @@ impl Viewer {
     }
 
     fn spawn_ambient(&mut self, grid: &Grid, rules: &Rules, time: f64) {
-        let win_cells = grid.cells_with_pos().filter(|(_, cell)| {
-            cell.units()
-                .iter()
-                .any(|unit| rules.unit_has_prop(unit.noun(), Property::Win))
-        });
+        self.spawn_ambient_from_prop(grid, rules, Property::Win, ParticleKind::Sparkle, time);
+        self.spawn_ambient_from_prop(grid, rules, Property::Hot, ParticleKind::Steam, time);
+    }
+
+    fn spawn_ambient_from_prop(&mut self, grid: &Grid, rules: &Rules, prop: Property, kind: ParticleKind, time: f64) {
+        let win_cells = grid
+            .cells_with_pos()
+            .filter(|(_, cell)| cell.units().iter().any(|unit| rules.unit_has_prop(unit.noun(), prop)));
         for (pos, _) in win_cells {
-            self.burst(ParticleKind::Sparkle, pos, time);
+            self.burst(kind, pos, time);
         }
     }
 
     fn burst(&mut self, kind: ParticleKind, pos: Pos, time: f64) {
-        let (count, offset) = match kind {
-            ParticleKind::Sparkle => (1, 0.5),
-            ParticleKind::Splash => (10, 0.5),
-            ParticleKind::Explode => (20, 0.6),
+        let (count, offset, chance) = match kind {
+            ParticleKind::Sparkle => (1, 0.5, 1.0),
+            ParticleKind::Splash => (10, 0.5, 1.0),
+            ParticleKind::Explode => (20, 0.6, 1.0),
+            ParticleKind::Steam => (1, 0.5, 0.05),
+            ParticleKind::Melt => (1, 0., 1.0),
         };
         let centre = Vec2::new(pos.x as f32 + 0.5, pos.y as f32 + 0.5);
         for _ in 0..count {
             let jitter = Vec2::new(rand::gen_range(-offset, offset), rand::gen_range(-offset, offset));
-            self.particles.push(Particle::new(kind, centre + jitter, time));
+            let roll = rand::gen_range(0., 1.);
+            if roll < chance {
+                self.particles.push(Particle::new(kind, centre + jitter, time));
+            }
         }
     }
 

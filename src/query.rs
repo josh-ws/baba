@@ -99,6 +99,17 @@ pub fn query_defeat(rules: &Rules, grid: &Grid) -> Vec<UnitRef> {
     )
 }
 
+/// query the grid for all `A` that shares a cell with some `B`, where A IS MELT and B IS HOT
+/// all units that should melt this turn
+pub fn query_melt(rules: &Rules, grid: &Grid) -> Vec<UnitRef> {
+    query_cells(
+        rules,
+        grid,
+        |r, c| cell_has(r, c, &[Property::Hot]),
+        |r, u| r.unit_has_prop(u.noun(), Property::Melt),
+    )
+}
+
 /// query the grid for all nouns `A` overlapping `B` where B IS SELECT
 pub fn query_selected(rules: &Rules, grid: &Grid) -> Vec<UnitRef> {
     query_cells(

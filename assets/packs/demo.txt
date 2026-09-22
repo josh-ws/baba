@@ -50,6 +50,7 @@ Name = Dev Test Levels
 Kind = map
 Link = 2,2 liquid
 Link = 3,2 and
+Link = 4,2 hotmelt
 Data =
 wt wt wt    .. .. .. la
 wt wt ..    .. .. .. ..
@@ -86,3 +87,16 @@ WT IS PU .. .. .. .. .. BA IS YO
 .. la la la .. .. .. .. .. .. ..
 .. .. .. .. .. .. .. la .. .. ..
 LA IS PU .. .. .. .. .. .. .. ..
+
+[hotmelt]
+Name = Hot and Melt
+Data =
+ .. .. .. .. .. .. .. .. .. .. .. .. ..
+ .. .. .. .. .. .. .. .. .. .. .. .. ..
+ .. BA IS YO .. .. .. .. .. LA IS HO ..
+ .. .. .. .. .. .. .. .. .. .. .. .. ..
+ .. .. .. ba .. ro .. la la la .. .. ..
+ .. .. .. .. .. .. .. .. la la .. .. ..
+ .. RO IS PU AN ME .. .. .. la la .. ..
+ .. .. .. .. .. .. .. .. .. .. .. .. ..
+ .. .. .. .. .. .. .. .. .. .. .. .. ..

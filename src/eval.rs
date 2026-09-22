@@ -4,8 +4,8 @@ use crate::{
     lex::lex,
     parse::parse,
     query::{
-        UnitRef, any_cell_has, cell_has, query_defeat, query_has, query_is_noun, query_is_property, query_selected,
-        query_sink,
+        UnitRef, any_cell_has, cell_has, query_defeat, query_has, query_is_noun, query_is_property, query_melt,
+        query_selected, query_sink,
     },
     rule::Rules,
     unit::{
@@ -25,6 +25,7 @@ pub enum TurnStatus {
 pub enum Cause {
     Sink,
     Defeat,
+    Melt,
 }
 
 #[derive(Debug, PartialEq)]
@@ -140,6 +141,7 @@ impl<'a> Turn<'a> {
         self.handle_transforms().then(|| self.reparse());
         self.handle_sink().then(|| self.reparse());
         self.handle_defeats().then(|| self.reparse());
+        self.handle_melt().then(|| self.reparse());
         TurnResult {
             status: self.check_status(),
             selected: query_selected(&self.rules, self.grid)
@@ -231,6 +233,11 @@ impl<'a> Turn<'a> {
     fn handle_defeats(&mut self) -> bool {
         let defeated = query_defeat(&self.rules, self.grid);
         self.destroy_and_create(&defeated, Cause::Defeat)
+    }
+
+    fn handle_melt(&mut self) -> bool {
+        let melted = query_melt(&self.rules, self.grid);
+        self.destroy_and_create(&melted, Cause::Melt)
     }
 
     // destroy all units in `doomed` and resolve their HAS rules.
