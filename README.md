@@ -20,7 +20,7 @@ All assets and code are original. Nothing from the original game is used and all
 
 **Mechanical**:
 - A live grid that responds to rule changes.
-- Simple sentences for properties and transformations. (Note: `NOT` and `AND` unsupported so far.)
+- Simple sentences for properties and transformations. (Note: `NOT` and conditions unsupported so far.)
 - Tiling sprites that update on grid changes (for liquids, paths, etc.)
 - Both maps and levels, with correct nesting.
 - Hot reload for level packs.
@@ -38,6 +38,8 @@ All assets and code are original. Nothing from the original game is used and all
 - `SINK`
 - `DEFEAT`
 - `MOVE`/`AUTO`
+- `AND` for nouns e.g. `BABA AND KEY IS YOU`
+- `AND` for properties e.g. `BABA IS YOU AND WIN`
 - ...and many nouns.
 
 ## License
