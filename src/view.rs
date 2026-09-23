@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, f64};
 
 use macroquad::{
     color::{Color, LIGHTGRAY, WHITE},
@@ -7,7 +7,7 @@ use macroquad::{
     rand,
     shapes::draw_rectangle,
     texture::{DrawTextureParams, FilterMode, Texture2D, draw_texture_ex, load_texture},
-    time::get_time,
+    time::{draw_fps, get_time},
     window::{clear_background, screen_height, screen_width},
 };
 
@@ -29,8 +29,12 @@ const WINDOW_HEIGHT: u32 = 820;
 const TILE_SIZE: f32 = 24.0;
 const BACKGROUND_COLOR: Color = Color::new(0.1, 0.1, 0.2, 1.);
 const GRID_COLOR: Color = Color::new(0.1, 0.1, 0.25, 1.);
+
 const WOBBLE_PERIOD: f64 = 0.20;
 const WOBBLE_FRAMES: usize = 3;
+
+const FLOAT_PERIOD: f64 = 3.5;
+const FLOAT_HEIGHT: f64 = 0.35;
 
 const PARTICLE_SPAWN_PERIOD: f64 = 0.3;
 
@@ -237,12 +241,14 @@ impl Viewer {
     }
 
     pub fn draw(&self, game: &Game) {
+        draw_fps();
         let time = get_time();
         let grid = game.current_level().grid();
+        let rules = parse(&lex(grid));
         let layout = Layout::new(grid, Vec2::new(screen_width(), screen_height()));
         self.draw_background(&layout);
         self.draw_caption(game);
-        self.draw_units(grid, &layout, time);
+        self.draw_units(&rules, grid, &layout, time);
         self.draw_particles(&layout, time);
     }
 
@@ -268,16 +274,21 @@ impl Viewer {
         }
     }
 
-    fn draw_units(&self, grid: &Grid, layout: &Layout, time: f64) {
+    fn draw_units(&self, rules: &Rules, grid: &Grid, layout: &Layout, time: f64) {
         let wobble = wobble(time);
-        let mut units = grid.units_with_pos().collect::<Vec<(Pos, &Unit)>>();
-        units.sort_unstable_by_key(|(_, unit)| lookup_unit(unit.kind()).group);
-        for (pos, unit) in units {
-            self.draw_unit(grid, unit, pos, layout, wobble);
+        let lift = float_lift(time) * layout.tile as f64;
+        let mut units = grid
+            .units_with_pos()
+            .map(|(pos, unit)| (pos, unit, rules.unit_has_prop(unit.noun(), Property::Float)))
+            .collect::<Vec<(Pos, &Unit, bool)>>();
+        units.sort_unstable_by_key(|(_, unit, float)| (*float, lookup_unit(unit.kind()).group));
+        for (pos, unit, float) in units {
+            let offset = if float { lift } else { 0. };
+            self.draw_unit(grid, unit, pos, layout, wobble, offset);
         }
     }
 
-    fn draw_unit(&self, grid: &Grid, unit: &Unit, pos: Pos, layout: &Layout, wobble: usize) {
+    fn draw_unit(&self, grid: &Grid, unit: &Unit, pos: Pos, layout: &Layout, wobble: usize, offset_y: f64) {
         let data = lookup_unit(unit.kind());
         let texture = self.atlas_texture(&data.sprite.atlas);
         let (column, flip_x) = sprite_column(grid, unit, pos, wobble);
@@ -294,7 +305,7 @@ impl Viewer {
             ..Default::default()
         };
         let at = layout.screen_position(pos);
-        draw_texture_ex(texture, at.x, at.y, WHITE, params);
+        draw_texture_ex(texture, at.x, at.y - offset_y as f32, WHITE, params);
     }
 
     fn atlas_texture(&self, atlas: &Atlas) -> &Texture2D {
@@ -361,6 +372,11 @@ impl Viewer {
 
 fn wobble(time: f64) -> usize {
     (time / WOBBLE_PERIOD) as usize % WOBBLE_FRAMES
+}
+
+fn float_lift(time: f64) -> f64 {
+    let phase = (time / FLOAT_PERIOD * f64::consts::TAU).sin();
+    FLOAT_HEIGHT * (1. + phase) / 2.
 }
 
 fn direction_index(direction: Direction) -> usize {
