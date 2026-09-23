@@ -1,5 +1,6 @@
 * Redraw the ugly wall tiles
-* Add in compound rules: AND, NOT
+* Add in compound rules: NOT
+* Conditions: ON, NEAR, ...
 * Add a few puzzles so there is something to play with when running
 * Remove hardcoded asset paths. Embed them in the binary?
 
@@ -8,5 +9,4 @@ Missing units
 * TELE
 * SHIFT (with BELT)
 * Falling: FALL_LEFT, FALL_RIGHT, ...
-* Float levels
-* Destruction: OPEN, SHUT, HOT, MELT, ...
+* Destruction: OPEN, SHUT, ...

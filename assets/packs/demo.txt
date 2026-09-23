@@ -51,10 +51,11 @@ Kind = map
 Link = 2,2 liquid
 Link = 3,2 and
 Link = 4,2 hotmelt
+Link = 5,2 float
 Data =
 wt wt wt    .. .. .. la
 wt wt ..    .. .. .. ..
-wt .. cu/le le le .. ..
+wt .. cu/le le le le ..
 wt .. ..    .. .. .. wt
 .. .. ..    .. .. wt wt
 
@@ -100,3 +101,13 @@ Data =
  .. RO IS PU AN ME .. .. .. la la .. ..
  .. .. .. .. .. .. .. .. .. .. .. .. ..
  .. .. .. .. .. .. .. .. .. .. .. .. ..
+
+[float]
+Name = Float
+Data =
+.. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. ..
+.. BA IS FO AN ME .. LA IS HO .. WT IS SI .. KE IS DE ..
+.. IS .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. ..
+.. YO .. .. .. .. .. .. .. .. .. .. ke .. .. .. .. .. ..
+.. ba .. .. .. la la .. .. .. .. .. .. .. .. .. .. .. ..
+.. .. .. .. la la la .. wt wt wt .. .. .. .. .. .. .. ..

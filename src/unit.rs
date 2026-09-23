@@ -105,6 +105,7 @@ const UNIT_TYPES: &[UnitTypeData] = &[
     word(Text::And, "AN", 20),
     word(Text::Property(Property::Hot), "HO", 21),
     word(Text::Property(Property::Melt), "ME", 22),
+    word(Text::Property(Property::Float), "FO", 23),
     object(Noun::Baba, "ba", 0, Facing::Directional, UnitGroup::Characters),
     object(Noun::Flag, "fl", 1, Facing::Fixed, UnitGroup::Item),
     object(Noun::Rock, "ro", 2, Facing::Fixed, UnitGroup::Item),
@@ -159,6 +160,7 @@ pub enum Property {
     Auto,
     Hot,
     Melt,
+    Float,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -80,10 +80,10 @@ pub fn query_is_property(rules: &Rules, grid: &Grid, prop: Property) -> Vec<Unit
 
 /// query the grid for all `A` and `B` where A and B share a cell, and A|B IS SINK
 pub fn query_sink(rules: &Rules, grid: &Grid) -> Vec<UnitRef> {
-    query_cells(
+    query_layers(
         rules,
         grid,
-        |r, c| c.units().len() > 1 && cell_has(r, c, &[Property::Sink]),
+        |r, layer| layer.len() > 1 && layer_has(r, layer, &[Property::Sink]),
         |_, _| true,
     )
 }
@@ -91,10 +91,10 @@ pub fn query_sink(rules: &Rules, grid: &Grid) -> Vec<UnitRef> {
 /// query the grid for all `A` that shares a cell with some `B`, where A IS YOU and B IS DEFEAT
 /// in other words, all `YOU` units that should be defeated
 pub fn query_defeat(rules: &Rules, grid: &Grid) -> Vec<UnitRef> {
-    query_cells(
+    query_layers(
         rules,
         grid,
-        |r, c| cell_has(r, c, &[Property::Defeat]),
+        |r, layer| layer_has(r, layer, &[Property::Defeat]),
         |r, u| r.unit_has_prop(u.noun(), Property::You),
     )
 }
@@ -102,10 +102,10 @@ pub fn query_defeat(rules: &Rules, grid: &Grid) -> Vec<UnitRef> {
 /// query the grid for all `A` that shares a cell with some `B`, where A IS MELT and B IS HOT
 /// all units that should melt this turn
 pub fn query_melt(rules: &Rules, grid: &Grid) -> Vec<UnitRef> {
-    query_cells(
+    query_layers(
         rules,
         grid,
-        |r, c| cell_has(r, c, &[Property::Hot]),
+        |r, layer| layer_has(r, layer, &[Property::Hot]),
         |r, u| r.unit_has_prop(u.noun(), Property::Melt),
     )
 }
@@ -136,6 +136,23 @@ pub fn query_cells(
         .collect::<Vec<UnitRef>>()
 }
 
+/// like query_cells, but split the cell into its float layers for the check
+/// for example, a FLOAT BABA and a non-FLOAT FLAG should not interact in a win check.
+pub fn query_layers(
+    rules: &Rules,
+    grid: &Grid,
+    layer_pred: impl Fn(&Rules, &[&Unit]) -> bool,
+    unit_pred: impl Fn(&Rules, &Unit) -> bool,
+) -> Vec<UnitRef> {
+    grid.cells_with_pos()
+        .flat_map(|(pos, cell)| layers(rules, cell).map(move |layer| (pos, layer)))
+        .filter(|(_, layer)| layer_pred(rules, layer))
+        .flat_map(|(pos, layer)| layer.into_iter().map(move |u| (pos, u)))
+        .filter(|(_, unit)| unit_pred(rules, unit))
+        .map(|(pos, unit)| UnitRef::new(unit.id(), pos))
+        .collect()
+}
+
 fn cell_has_prop(rules: &Rules, cell: &Cell, prop: Property) -> bool {
     cell.units().iter().any(|u| rules.unit_has_prop(u.noun(), prop))
 }
@@ -150,4 +167,26 @@ pub fn cell_has(rules: &Rules, cell: &Cell, props: &[Property]) -> bool {
 /// for example, BABA IS YOU and KEY IS WIN with baba and key on the same tile, checking for [You, Win] => true.
 pub fn any_cell_has(rules: &Rules, grid: &Grid, props: &[Property]) -> bool {
     grid.cells().iter().any(|cell| cell_has(rules, cell, props))
+}
+
+/// like cell_has, but on the float layers instead
+pub fn layer_has(rules: &Rules, layer: &[&Unit], props: &[Property]) -> bool {
+    props
+        .iter()
+        .all(|p| layer.iter().any(|u| rules.unit_has_prop(u.noun(), *p)))
+}
+
+pub fn any_layer_has(rules: &Rules, grid: &Grid, props: &[Property]) -> bool {
+    grid.cells()
+        .iter()
+        .flat_map(|c| layers(rules, c))
+        .any(|layer| layer_has(rules, &layer, props))
+}
+
+fn layers<'a>(rules: &Rules, cell: &'a Cell) -> impl Iterator<Item = Vec<&'a Unit>> {
+    let (float, nonfloat): (Vec<&Unit>, Vec<&Unit>) = cell
+        .units()
+        .iter()
+        .partition(|u| rules.unit_has_prop(u.noun(), Property::Float));
+    [nonfloat, float].into_iter().filter(|l| !l.is_empty())
 }

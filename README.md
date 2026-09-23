@@ -39,6 +39,7 @@ All assets and code are original. Nothing from the original game is used and all
 - `DEFEAT`
 - `MOVE`/`AUTO`
 - `HOT`/`MELT`
+- `FLOAT`
 - `AND` for nouns e.g. `BABA AND KEY IS YOU`
 - `AND` for properties e.g. `BABA IS YOU AND WIN`
 - ...and many nouns.

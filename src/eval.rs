@@ -4,8 +4,8 @@ use crate::{
     lex::lex,
     parse::parse,
     query::{
-        UnitRef, any_cell_has, cell_has, query_defeat, query_has, query_is_noun, query_is_property, query_melt,
-        query_selected, query_sink,
+        UnitRef, any_cell_has, any_layer_has, cell_has, query_defeat, query_has, query_is_noun, query_is_property,
+        query_melt, query_selected, query_sink,
     },
     rule::Rules,
     unit::{
@@ -153,7 +153,7 @@ impl<'a> Turn<'a> {
     }
 
     fn check_status(&self) -> TurnStatus {
-        if any_cell_has(&self.rules, self.grid, &[Property::Win, Property::You]) {
+        if any_layer_has(&self.rules, self.grid, &[Property::Win, Property::You]) {
             TurnStatus::Win
         } else {
             TurnStatus::Continue
@@ -595,8 +595,31 @@ mod tests {
     }
 
     #[test]
+    fn hot_and_melt() {
+        expect("BA IS YO RO IS PU AN ME LA IS HO ba ro la", ">", "BA IS YO RO IS PU AN ME LA IS HO .. ba la");
+        expect("BA IS YO AN HO AN ME ba", ">", "BA IS YO AN HO AN ME ..");
+    }
+
+    #[test]
     #[ignore = "needs a rewrite of movement"]
     fn you_moves_before_stop() {
         expect("BA AN FL IS YO AN ST ba fl .. ..", ">", "BA AN FL IS YO AN ST .. ba fl ..");
+    }
+
+    #[test]
+    fn float() {
+        expect("BA IS YO AN FO WT IS SI ba wt", ">", "BA IS YO AN FO WT IS SI .. wt/ba");
+        expect("BA IS YO AN FO WT IS SI AN FO ba wt", ">", "BA IS YO AN FO WT IS SI AN FO .. ..");
+        expect("BA IS YO AN FO RO IS DE ba ro", ">", "BA IS YO AN FO RO IS DE .. ro/ba");
+        expect("BA IS YO AN FO RO IS DE AN FO ba ro", ">", "BA IS YO AN FO RO IS DE AN FO .. ro");
+        expect("BA IS YO AN FO AN ME LA IS HO ba la", ">", "BA IS YO AN FO AN ME LA IS HO .. la/ba");
+        expect("BA IS YO AN FO AN ME LA IS HO AN FO ba la", ">", "BA IS YO AN FO AN ME LA IS HO AN FO .. la");
+        expect_status("BA IS YO AN FO FL IS WI ba fl", ">", TurnStatus::Continue);
+        expect_status("BA IS YO AN FO FL IS WI AN FO ba fl", ">", TurnStatus::Win);
+        expect("BA IS YO WT IS SI ba wt/BA .. IS FO", ">", "BA IS YO WT IS SI .. wt/ba BA IS FO");
+        expect("BA IS YO AN FO WA IS ST ba wa ..", ">", "BA IS YO AN FO WA IS ST ba wa ..");
+        expect("BA IS YO AN FO WA IS ST AN FO ba wa ..", ">", "BA IS YO AN FO WA IS ST AN FO ba wa ..");
+        expect("BA IS YO AN FO WA IS PU .. ba wa", ">", "BA IS YO AN FO WA IS PU .. ba wa");
+        expect("BA IS YO AN FO WA IS PU AN FO .. ba wa", ">", "BA IS YO AN FO WA IS PU AN FO .. ba wa");
     }
 }
