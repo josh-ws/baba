@@ -109,13 +109,13 @@ const UNIT_TYPES: &[UnitTypeData] = &[
     object(Noun::Baba, "ba", 0, Facing::Directional, UnitGroup::Characters),
     object(Noun::Flag, "fl", 1, Facing::Fixed, UnitGroup::Item),
     object(Noun::Rock, "ro", 2, Facing::Fixed, UnitGroup::Item),
-    object(Noun::Wall, "wa", 3, Facing::Fixed, UnitGroup::Wall),
     object(Noun::Cursor, "cu", 4, Facing::Fixed, UnitGroup::Text),
     object(Noun::Level, "le", 5, Facing::Fixed, UnitGroup::Ground),
     object(Noun::Key, "ke", 8, Facing::Fixed, UnitGroup::Item),
     tiled(Noun::Water, "wt", 1, UnitGroup::Liquid),
     tiled(Noun::Lava, "la", 4, UnitGroup::Liquid),
     tiled(Noun::Path, "pa", 7, UnitGroup::Ground),
+    tiled(Noun::Wall, "wa", 10, UnitGroup::Wall),
 ];
 
 pub fn lookup_unit(kind: UnitKind) -> &'static UnitTypeData {
