@@ -4,8 +4,8 @@ Root = root
 [root]
 Name = Hub World
 Kind = map
-Link = 1,2 test-levels
-Link = 4,2 puzzles
+Link = 1,2,test-levels,T
+Link = 4,2,puzzles,P
 Data =
 wt ..    .. .. wt wt
 .. ..    .. .. .. ..
@@ -17,9 +17,9 @@ wt ..    .. .. wt wt
 [puzzles]
 Name = My Puzzles
 Kind = map
-Link = 2,4 adversary
-Link = 3,4 heist
-Link = 3,2 flag
+Link = 2,4,adversary,1
+Link = 3,4,heist,2
+Link = 3,2,flag,A
 Data =
 .. .. ..    .. .. .. wt wt wt wt
 .. .. ..    .. .. .. .. wt wt wt
@@ -47,7 +47,7 @@ WA IS ST wa .. .. wa wa wa wa wa .. .. wt wt wt wt
 [flag]
 Name = Where is the Flag?
 Data =
-wa wa BA IS .. DE .. .. .. ke wa wa .. .. .. wt wt
+wa wa BA IS .. DE .. ke wa wa wa wa .. .. .. wt wt
 wa wa wa wa wa wa wa wa wa wa wa wa .. .. .. .. wt
 wa wa wa wa .. .. .. FL IS WI wa .. .. .. .. .. ..
 wa wa .. .. .. KE wa wa wa wa wa .. BA IS YO .. ..
@@ -75,13 +75,13 @@ wa wa wa wa wa wa wa wa wa wa wa wa wa .. .. wa wa wa wa
 [test-levels]
 Name = Dev Test Levels
 Kind = map
-Link = 2,2 liquid
-Link = 3,2 and
-Link = 4,2 hotmelt
-Link = 5,2 float
-Link = 6,2 walls
+Link = 2,2,liquid,1
+Link = 3,2,and,2
+Link = 4,2,hotmelt,3
+Link = 5,2,float,4
+Link = 6,2,walls,5
 Data =
-wt wt wt    .. .. .. la
+wt wt WT    AN LE IS FO
 wt wt ..    .. .. .. ..
 wt .. cu/le le le le le
 wt .. ..    .. .. .. wt

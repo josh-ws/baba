@@ -82,8 +82,8 @@ impl Game {
     }
 
     pub fn caption(&self) -> Option<&str> {
-        if let Some(key) = self.current_level().link_for(&self.selected) {
-            if let Some(level) = self.pack.get_level(key) {
+        if let Some(link) = self.current_level().link_for(&self.selected) {
+            if let Some(level) = self.pack.get_level(link.key()) {
                 return Some(level.name());
             }
         }
@@ -98,7 +98,7 @@ impl Game {
         let Some(link) = self.current_level().link_for(&self.selected) else {
             return false;
         };
-        let link = link.to_string();
+        let link = link.key().to_string();
         self.goto(&link);
         true
     }

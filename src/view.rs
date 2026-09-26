@@ -1,7 +1,7 @@
 use std::{collections::HashMap, f64};
 
 use macroquad::{
-    color::{Color, LIGHTGRAY, WHITE},
+    color::{Color, WHITE},
     math::{Rect, Vec2},
     miniquad::window::set_window_size,
     rand,
@@ -14,6 +14,7 @@ use macroquad::{
 use baba::{
     eval::{Cause, Event},
     game::Game,
+    level::Level,
     lex::lex,
     parse::parse,
     rule::Rules,
@@ -56,7 +57,7 @@ impl Font {
         Ok(Self { texture })
     }
 
-    fn draw(&self, x: f32, y: f32, scale: f32, text: &str) {
+    fn draw(&self, x: f32, y: f32, scale: f32, text: &str, color: Color) {
         let size = Vec2::new(Self::WIDTH, Self::HEIGHT) * scale;
         let mut curr_x = x;
         for c in text.chars() {
@@ -76,7 +77,7 @@ impl Font {
                     dest_size: Some(size),
                     ..Default::default()
                 };
-                draw_texture_ex(&self.texture, curr_x, y, LIGHTGRAY, params);
+                draw_texture_ex(&self.texture, curr_x, y, color, params);
             }
             curr_x += size.x + 3.;
         }
@@ -248,7 +249,7 @@ impl Viewer {
         let layout = Layout::new(grid, Vec2::new(screen_width(), screen_height()));
         self.draw_background(&layout);
         self.draw_caption(game);
-        self.draw_units(&rules, grid, &layout, time);
+        self.draw_units(&rules, game.current_level(), &layout, time);
         self.draw_particles(&layout, time);
     }
 
@@ -270,22 +271,34 @@ impl Viewer {
     fn draw_caption(&self, game: &Game) {
         if let Some(caption) = game.caption() {
             let scale = 2.;
-            self.font.draw(0., 0., scale, caption);
+            self.font.draw(0., 0., scale, caption, WHITE);
         }
     }
 
-    fn draw_units(&self, rules: &Rules, grid: &Grid, layout: &Layout, time: f64) {
+    fn draw_units(&self, rules: &Rules, level: &Level, layout: &Layout, time: f64) {
         let wobble = wobble(time);
         let lift = float_lift(time) * layout.tile as f64;
-        let mut units = grid
+        let mut units = level
+            .grid()
             .units_with_pos()
             .map(|(pos, unit)| (pos, unit, rules.unit_has_prop(unit.noun(), Property::Float)))
             .collect::<Vec<(Pos, &Unit, bool)>>();
         units.sort_unstable_by_key(|(_, unit, float)| (*float, lookup_unit(unit.kind()).group));
         for (pos, unit, float) in units {
             let offset = if float { lift } else { 0. };
-            self.draw_unit(grid, unit, pos, layout, wobble, offset);
+            self.draw_unit(level.grid(), unit, pos, layout, wobble, offset);
+            if let Some(link) = level.links().get(&unit.id()) {
+                self.draw_link_label(link.display(), pos, layout, offset);
+            }
         }
+    }
+
+    fn draw_link_label(&self, display: &str, pos: Pos, layout: &Layout, offset: f64) {
+        let scale = layout.tile / TILE_SIZE;
+        let glyph = Vec2::new(Font::WIDTH, Font::HEIGHT) * scale;
+        let at = layout.screen_position(pos) + ((Vec2::splat(layout.tile) - glyph) / 2.).floor();
+        self.font
+            .draw(at.x, at.y - offset as f32, layout.tile / TILE_SIZE, display, WHITE);
     }
 
     fn draw_unit(&self, grid: &Grid, unit: &Unit, pos: Pos, layout: &Layout, wobble: usize, offset_y: f64) {

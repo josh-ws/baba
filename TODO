@@ -12,3 +12,7 @@ Missing units
 * SHIFT (with BELT)
 * Falling: FALL_LEFT, FALL_RIGHT, ...
 * Destruction: OPEN, SHUT, ...
+
+Ideas for new units
+* BIG (unit occupies a 2x2 space) or BIG AND BIG (3x3 space) etc.
+* CHASE (unit actively seeks whatever is YOU)

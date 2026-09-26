@@ -24,11 +24,31 @@ impl TryFrom<&str> for LevelKind {
 }
 
 #[derive(Debug)]
+pub struct Link {
+    key: String,
+    display: String,
+}
+
+impl Link {
+    fn new(key: String, display: String) -> Self {
+        Self { key, display }
+    }
+
+    pub fn key(&self) -> &str {
+        &self.key
+    }
+
+    pub fn display(&self) -> &str {
+        &self.display
+    }
+}
+
+#[derive(Debug)]
 pub struct Level {
     name: String,
     grid: Grid,
     kind: LevelKind,
-    links: HashMap<u64, String>,
+    links: HashMap<u64, Link>,
     grid_history: Vec<Grid>,
 }
 
@@ -57,7 +77,7 @@ impl Level {
         &self.grid
     }
 
-    pub fn links(&self) -> &HashMap<u64, String> {
+    pub fn links(&self) -> &HashMap<u64, Link> {
         &self.links
     }
 
@@ -110,7 +130,7 @@ impl Level {
         }
     }
 
-    pub fn link_for(&self, selected: &[u64]) -> Option<&str> {
+    pub fn link_for(&self, selected: &[u64]) -> Option<&Link> {
         for unit in selected {
             if let Some(key) = self.links.get(unit) {
                 return Some(key);
@@ -120,10 +140,13 @@ impl Level {
     }
 
     fn parse_link(&mut self, src: &str) -> Result<(), String> {
-        let (x, y, key) = src
-            .split_once(" ")
-            .and_then(|(position, key)| position.split_once(",").map(|(x, y)| (x, y, key.trim())))
-            .ok_or_else(|| format!("link {src} in invalid format: should be `x,y level`"))?;
+        let parts = src.split(",").collect::<Vec<&str>>();
+        let (x, y, key, display) = match &parts[..] {
+            [x, y, key] => (x, y, key, &"A"),
+            [x, y, key, display] => (x, y, key, display),
+            _ => return Err("link {src} in invalid format: should be `x,y,key,display`".to_string()),
+        };
+
         let ix = x.parse::<i32>().map_err(|_| format!("link {src} X position invalid"))?;
         let iy = y.parse::<i32>().map_err(|_| format!("link {src} Y position invalid"))?;
         let pos = Pos::new(ix, iy);
@@ -137,7 +160,8 @@ impl Level {
             .last()
             .ok_or_else(|| format!("link {src} links to empty or invalid unit"))?;
 
-        self.links.insert(unit.id(), key.to_string());
+        let link = Link::new(key.to_string(), display.to_string());
+        self.links.insert(unit.id(), link);
         Ok(())
     }
 }

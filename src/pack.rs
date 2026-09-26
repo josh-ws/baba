@@ -41,8 +41,8 @@ impl Levelpack {
                 level
                     .links()
                     .values()
-                    .filter(|link_key| !self.levels.contains_key(*link_key))
-                    .map(move |link_key| (key.as_str(), link_key.as_str()))
+                    .filter(|link| !self.levels.contains_key(*&link.key()))
+                    .map(move |link| (key.as_str(), link.key()))
             })
             .collect::<Vec<(&str, &str)>>();
 
@@ -136,7 +136,7 @@ mod tests {
             [root]
             Name = Test Map
             Kind = map
-            Link = 0,0 missing
+            Link = 0,0,missing,A
             Data =
             ba";
         let result = Levelpack::parse(src);
@@ -156,14 +156,12 @@ mod tests {
             [root]
             Name = Test Map
             Kind = map
-            Link = 0,0 missing
             Data =
             ba
 
             [root]
             Name = Test Map 2
             Kind = map
-            Link = 0,0 missing
             Data =
             ba";
         let result = Levelpack::parse(src);
@@ -201,7 +199,7 @@ mod tests {
             [root]
             Name = Test Map
             Kind = map
-            Link = 0,0 missing
+            Link = 0,0,missing,A
             Foo = Bar
             Data =
             ba";
@@ -260,7 +258,7 @@ mod tests {
             [root]
             Name = Root Map
             Kind = map
-            Link = 0,0 test
+            Link = 0,0,test,A
             Data =
             .. .. ..
 
@@ -273,7 +271,30 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
-            "level root: link 0,0 test links to empty or invalid unit".to_string()
+            "level root: link 0,0,test,A links to empty or invalid unit".to_string()
         );
+    }
+    #[test]
+    fn parses_display_from_pack() {
+        let src = "
+            Pack = Test Pack
+            Root = root
+
+            [root]
+            Name = Root Map
+            Kind = map
+            Link = 0,0,test,ABCDEF
+            Data =
+            le .. ..
+
+            [test]
+            Name = Test Map
+            Kind = puzzle
+            Data =
+            ba .. ..";
+        let result = Levelpack::parse(src).unwrap();
+        let links = result.get_level("root").unwrap().links();
+        assert_eq!(1, links.len());
+        assert_eq!("ABCDEF", format!("{}", links.get(&0u64).unwrap().display()))
     }
 }
