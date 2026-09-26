@@ -140,8 +140,8 @@ impl<'a> Turn<'a> {
         (you || movers || auto || select).then(|| self.reparse()); // don't reparse between movements, matches retail
         self.handle_transforms().then(|| self.reparse());
         self.handle_sink().then(|| self.reparse());
-        self.handle_defeats().then(|| self.reparse());
         self.handle_melt().then(|| self.reparse());
+        self.handle_defeats().then(|| self.reparse());
         TurnResult {
             status: self.check_status(),
             selected: query_selected(&self.rules, self.grid)

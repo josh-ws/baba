@@ -28,7 +28,7 @@ const WINDOW_WIDTH: u32 = 800;
 const WINDOW_HEIGHT: u32 = 820;
 const TILE_SIZE: f32 = 24.0;
 const BACKGROUND_COLOR: Color = Color::new(0.1, 0.1, 0.2, 1.);
-const GRID_COLOR: Color = Color::new(0.1, 0.1, 0.25, 1.);
+const GRID_COLOR: Color = Color::new(0.0, 0.0, 0.02, 1.);
 
 const WOBBLE_PERIOD: f64 = 0.20;
 const WOBBLE_FRAMES: usize = 3;

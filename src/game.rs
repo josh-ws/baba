@@ -1,6 +1,6 @@
 use crate::{
     eval::{Event, TurnStatus},
-    level::Level,
+    level::{Level, LevelKind},
     lex::lex,
     pack::Levelpack,
     parse::parse,
@@ -82,14 +82,16 @@ impl Game {
     }
 
     pub fn caption(&self) -> Option<&str> {
-        let key = self.current_level().link_for(&self.selected);
-        match key {
-            Some(key) => match self.pack.get_level(key) {
-                Some(level) => Some(level.name()),
-                None => None,
-            },
-            None => None,
+        if let Some(key) = self.current_level().link_for(&self.selected) {
+            if let Some(level) = self.pack.get_level(key) {
+                return Some(level.name());
+            }
         }
+        let level = self.current_level();
+        if level.kind() == LevelKind::Puzzle {
+            return Some(level.name());
+        }
+        None
     }
 
     pub fn enter_link(&mut self) -> bool {

@@ -17,27 +17,60 @@ wt ..    .. .. wt wt
 [puzzles]
 Name = My Puzzles
 Kind = map
-Link = 2,4 moat
+Link = 2,4 adversary
+Link = 3,4 heist
+Link = 3,2 flag
 Data =
 .. .. ..    .. .. .. wt wt wt wt
 .. .. ..    .. .. .. .. wt wt wt
-.. .. ..    .. .. .. .. .. .. wt
-.. .. ..    .. .. .. .. .. .. wt
-.. .. cu/le pa pa pa le .. .. wt
+.. .. ..    le .. .. .. .. .. wt
+.. .. ..    pa .. .. .. .. .. wt
+.. .. cu/le le le le le .. .. wt
 .. .. ..    .. .. .. le le .. ..
 .. .. ..    .. .. .. le le le ..
 .. .. ..    .. .. .. .. .. .. ..
 .. .. ..    .. .. .. .. .. .. ..
 
-[moat]
-BA IS YO AN .. DE .. .. .. .. ke
-wt wt wt wt wt wt wt wt wt wt wt
-.. .. .. .. .. .. .. .. .. .. ..
-.. .. .. .. .. KE wt wt wt wt wt
-.. fl .. .. .. IS wt .. .. .. ..
-.. .. .. .. .. YO .. .. .. .. ba
-FL IS WI .. .. .. wt .. .. .. ..
-WT IS ST .. .. .. wt wt wt wt wt
+[adversary]
+Name = The Adversary
+Data =
+wa wa FL IS .. DE .. .. .. .. ke wa .. .. .. wt wt
+wa wa wa wa wa wa wa wa wa wa wa wa .. .. .. .. wt
+.. .. .. .. .. .. .. FL IS WI wa .. .. .. .. .. ..
+.. .. .. .. .. KE wa wa wa wa wa .. BA IS YO .. ..
+.. fl .. .. .. IS wa .. .. .. .. .. .. .. .. .. ..
+.. .. .. .. .. YO .. .. .. .. ba .. KE IS MO .. ..
+.. .. .. .. .. .. wa .. .. .. .. .. .. .. .. .. ..
+wa wa wa wa .. .. wa .. .. .. .. .. .. .. .. .. wt
+WA IS ST wa .. .. wa wa wa wa wa .. .. wt wt wt wt
+
+[flag]
+Name = Where is the Flag?
+Data =
+wa wa BA IS .. DE .. .. .. ke wa wa .. .. .. wt wt
+wa wa wa wa wa wa wa wa wa wa wa wa .. .. .. .. wt
+wa wa wa wa .. .. .. FL IS WI wa .. .. .. .. .. ..
+wa wa .. .. .. KE wa wa wa wa wa .. BA IS YO .. ..
+wa .. .. .. .. IS wa .. .. .. .. .. AN .. .. .. ..
+wa .. .. .. .. YO .. .. .. .. ba .. MO .. .. .. ..
+wa wa .. .. .. .. wa .. .. .. .. .. .. .. .. .. ..
+wa wa wa wa .. .. wa .. .. .. .. .. .. .. .. .. wt
+WA IS ST wa .. .. wa wa wa wa wa .. .. wt wt wt wt
+
+[heist]
+Name = The Heist
+Data =
+WA IS ST wa WT IS DE wa FL IS WI AN ME .. .. wa LA IS HO
+wa wa wa wa wa wa wa wa wa wa wa wa wa .. .. wa wa wa wa
+.. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. ..
+.. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. ..
+.. .. .. ba .. .. .. .. .. .. .. KE IS PU AN MO .. .. ..
+.. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. ..
+.. .. .. .. .. ke .. .. .. .. .. .. .. .. .. .. .. .. ..
+.. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. ..
+.. .. .. .. .. wa wa .. wa wa wa wa wa wa wa wa wa wa wa
+.. wa wa wa wa wa la .. wt wt wt .. .. .. .. .. fl la la
+.. wa BA IS YO wa wa .. wa wa wa wa wa wa wa wa wa wa wa
 
 [test-levels]
 Name = Dev Test Levels

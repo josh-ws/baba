@@ -3,6 +3,8 @@
 * Conditions: ON, NEAR, ...
 * Add a few puzzles so there is something to play with when running
 * Remove hardcoded asset paths. Embed them in the binary?
+* Should be able to idle
+* Level/map transitions, not just one frame snaps
 
 Missing units
 * Movement rules: LEFT/UP/RIGHT/DOWN, NUDGE, LOCKED...

@@ -4,6 +4,8 @@
 
 All assets and code are original. Nothing from the original game is used and all art is redrawn (poorly) by me.
 
+![baba preview](assets/preview.png)
+
 ## Building
 
 `cargo run` from the root. No build is provided yet and assets are relative to the root directory.

@@ -5,7 +5,7 @@ use crate::{
     world::{Direction, Grid, Pos},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LevelKind {
     Puzzle,
     Map,
@@ -59,6 +59,10 @@ impl Level {
 
     pub fn links(&self) -> &HashMap<u64, String> {
         &self.links
+    }
+
+    pub fn kind(&self) -> LevelKind {
+        self.kind
     }
 
     pub fn read(src: &str) -> Result<Level, String> {
