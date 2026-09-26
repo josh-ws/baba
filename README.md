@@ -12,6 +12,7 @@ All assets and code are original. Nothing from the original game is used and all
 
 ## Controls
 - WASD or arrow keys for movement
+- Space: Idle (tick the game without moving YOU)
 - Z: Undo
 - Enter: Enter selected level
 - Backspace: Return to the previous map/level

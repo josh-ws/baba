@@ -71,7 +71,7 @@ impl Game {
         self.visited.last().expect("empty visited")
     }
 
-    pub fn update(&mut self, dir: Direction) -> Vec<Event> {
+    pub fn update(&mut self, dir: Option<Direction>) -> Vec<Event> {
         let result = self.current_level_mut().update(dir);
         self.selected = result.selected;
         if result.status == TurnStatus::Win {

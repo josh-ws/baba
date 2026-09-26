@@ -18,6 +18,7 @@ enum Action {
     BackOutOfLevel,
     Exit,
     Refresh,
+    Idle,
 }
 
 const KEYMAP: &[(KeyCode, Action)] = &[
@@ -34,6 +35,7 @@ const KEYMAP: &[(KeyCode, Action)] = &[
     (KeyCode::Backspace, Action::BackOutOfLevel),
     (KeyCode::Escape, Action::Exit),
     (KeyCode::F5, Action::Refresh),
+    (KeyCode::Space, Action::Idle),
 ];
 
 fn get_action() -> Option<Action> {
@@ -54,7 +56,7 @@ async fn main() -> Result<(), String> {
         let mut events = Vec::new();
         match get_action() {
             Some(Action::Move(dir)) => {
-                events = game.update(dir);
+                events = game.update(Some(dir));
             }
             Some(Action::Undo) => {
                 game.undo();
@@ -69,7 +71,10 @@ async fn main() -> Result<(), String> {
                 }
             }
             Some(Action::Exit) => return Ok(()),
-            _ => (),
+            Some(Action::Idle) => {
+                events = game.update(None);
+            }
+            None => (),
         }
         viewer.update(&game, &events);
         viewer.draw(&game);

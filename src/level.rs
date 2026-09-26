@@ -91,7 +91,7 @@ impl Level {
         Ok(level)
     }
 
-    pub fn update(&mut self, dir: Direction) -> TurnResult {
+    pub fn update(&mut self, dir: Option<Direction>) -> TurnResult {
         let before = self.grid.clone();
         let result = Turn::new(&mut self.grid, dir).run();
         if before != self.grid {

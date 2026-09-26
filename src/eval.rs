@@ -117,12 +117,12 @@ impl<'a> Movement<'a> {
 pub struct Turn<'a> {
     grid: &'a mut Grid,
     rules: Rules,
-    input: Direction,
+    input: Option<Direction>,
     events: Vec<Event>,
 }
 
 impl<'a> Turn<'a> {
-    pub fn new(grid: &'a mut Grid, input: Direction) -> Self {
+    pub fn new(grid: &'a mut Grid, input: Option<Direction>) -> Self {
         Self {
             grid,
             input,
@@ -152,6 +152,10 @@ impl<'a> Turn<'a> {
         }
     }
 
+    fn is_idle(&self) -> bool {
+        self.input.is_none()
+    }
+
     fn check_status(&self) -> TurnStatus {
         if any_layer_has(&self.rules, self.grid, &[Property::Win, Property::You]) {
             TurnStatus::Win
@@ -165,20 +169,25 @@ impl<'a> Turn<'a> {
     }
 
     fn move_you(&mut self) -> bool {
+        let Some(direction) = self.input else {
+            return false;
+        };
         let you = query_is_property(&self.rules, self.grid, Property::You);
-        let dir = self.input;
         let mut movement = Movement::new(self.grid, &self.rules);
         for unit in &you {
-            movement.try_move(unit.unit_id, dir);
+            movement.try_move(unit.unit_id, direction);
         }
         movement.changed()
     }
 
     fn move_select(&mut self) -> bool {
+        let Some(direction) = self.input else {
+            return false;
+        };
         let select = query_is_property(&self.rules, self.grid, Property::Select);
         let mut moved = false;
         for unit in &select {
-            let target = unit.pos.shift(self.input);
+            let target = unit.pos.shift(direction);
             if !self.grid.in_bounds(target) {
                 continue;
             }
@@ -186,7 +195,7 @@ impl<'a> Turn<'a> {
                 continue;
             }
             self.grid
-                .move_matching(unit.pos, target, self.input, |p| p.id() == unit.unit_id);
+                .move_matching(unit.pos, target, direction, |p| p.id() == unit.unit_id);
             moved = true;
         }
         moved
@@ -278,7 +287,7 @@ mod tests {
                 'v' => Direction::South,
                 _ => panic!("invalid key {key}"),
             };
-            result = Some(Turn::new(grid, direction).run());
+            result = Some(Turn::new(grid, Some(direction)).run());
         }
         result.expect("no input given")
     }
