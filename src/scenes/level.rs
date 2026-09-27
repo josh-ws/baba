@@ -8,6 +8,15 @@ use crate::{
     world::Direction,
 };
 
+#[derive(Clone, Copy)]
+pub enum LevelAction {
+    Move(Direction),
+    Idle,
+    Undo,
+    EnterLevel,
+    BackOutOfLevel,
+}
+
 #[derive(Debug)]
 pub struct LevelScene {
     pack: Levelpack,
@@ -71,8 +80,27 @@ impl LevelScene {
         self.visited.last().expect("empty visited")
     }
 
-    pub fn update(&mut self, dir: Option<Direction>) -> Vec<Event> {
-        let result = self.current_level_mut().update(dir);
+    pub fn update(&mut self, action: LevelAction) -> Vec<Event> {
+        match action {
+            LevelAction::BackOutOfLevel => {
+                self.return_to_parent();
+                vec![]
+            }
+            LevelAction::EnterLevel => {
+                self.enter_link();
+                vec![]
+            }
+            LevelAction::Idle => self.tick(None),
+            LevelAction::Move(dir) => self.tick(Some(dir)),
+            LevelAction::Undo => {
+                self.undo();
+                vec![]
+            }
+        }
+    }
+
+    fn tick(&mut self, direction: Option<Direction>) -> Vec<Event> {
+        let result = self.current_level_mut().update(direction);
         self.selected = result.selected;
         if result.status == TurnStatus::Win {
             println!("You win!");

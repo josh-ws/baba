@@ -1,42 +1,23 @@
-use baba::{scenes::level::LevelScene, world::Direction};
+use baba::scenes::{Scene, level::LevelScene};
 use macroquad::{
     input::{KeyCode, is_key_pressed},
-    window::next_frame,
+    window::{Conf, next_frame},
 };
 
-use crate::views::level::LevelView;
+use crate::game::{Game, Resources};
 
+mod game;
 mod views;
 
 const PACK_SRC: &str = "assets/packs/demo.txt"; // TODO(jw) move hardcoded path
 
 #[derive(Clone, Copy)]
 enum Action {
-    Move(Direction),
-    Undo,
-    EnterLevel,
-    BackOutOfLevel,
     Exit,
     Refresh,
-    Idle,
 }
 
-const KEYMAP: &[(KeyCode, Action)] = &[
-    (KeyCode::W, Action::Move(Direction::North)),
-    (KeyCode::A, Action::Move(Direction::West)),
-    (KeyCode::S, Action::Move(Direction::South)),
-    (KeyCode::D, Action::Move(Direction::East)),
-    (KeyCode::Up, Action::Move(Direction::North)),
-    (KeyCode::Left, Action::Move(Direction::West)),
-    (KeyCode::Down, Action::Move(Direction::South)),
-    (KeyCode::Right, Action::Move(Direction::East)),
-    (KeyCode::Z, Action::Undo),
-    (KeyCode::Enter, Action::EnterLevel),
-    (KeyCode::Backspace, Action::BackOutOfLevel),
-    (KeyCode::Escape, Action::Exit),
-    (KeyCode::F5, Action::Refresh),
-    (KeyCode::Space, Action::Idle),
-];
+const KEYMAP: &[(KeyCode, Action)] = &[(KeyCode::F5, Action::Refresh), (KeyCode::Escape, Action::Exit)];
 
 fn get_action() -> Option<Action> {
     for (key, action) in KEYMAP {
@@ -47,37 +28,29 @@ fn get_action() -> Option<Action> {
     None
 }
 
-#[macroquad::main("baba")]
-async fn main() -> Result<(), String> {
-    let mut game = LevelScene::from_file(PACK_SRC)?;
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "baba".into(),
+        window_width: 1200,
+        window_height: 1200,
+        window_resizable: true,
+        ..Default::default()
+    }
+}
 
-    let mut viewer = LevelView::new().await?;
+#[macroquad::main(window_conf)]
+async fn main() -> Result<(), String> {
+    let assets = Resources::load().await?;
+    let scene = LevelScene::from_file(PACK_SRC)?;
+    let mut game = Game::new(assets, Scene::Level(scene));
     loop {
-        let mut events = Vec::new();
         match get_action() {
-            Some(Action::Move(dir)) => {
-                events = game.update(Some(dir));
-            }
-            Some(Action::Undo) => {
-                game.undo();
-            }
-            Some(Action::EnterLevel) => {
-                game.enter_link();
-            }
-            Some(Action::BackOutOfLevel) => game.return_to_parent(),
-            Some(Action::Refresh) => {
-                if let Err(e) = game.reload(PACK_SRC) {
-                    eprintln!("could not reload pack: {e}")
-                }
-            }
+            Some(Action::Refresh) => game.reload(PACK_SRC),
             Some(Action::Exit) => return Ok(()),
-            Some(Action::Idle) => {
-                events = game.update(None);
-            }
             None => (),
         }
-        viewer.update(&game, &events);
-        viewer.draw(&game);
+        game.update();
+        game.draw();
         next_frame().await;
     }
 }

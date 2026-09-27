@@ -1,12 +1,12 @@
-use std::{collections::HashMap, f64};
+use std::f64;
 
 use macroquad::{
     color::{Color, WHITE},
+    input::{KeyCode, is_key_pressed},
     math::{Rect, Vec2},
-    miniquad::window::set_window_size,
     rand,
     shapes::draw_rectangle,
-    texture::{DrawTextureParams, FilterMode, Texture2D, draw_texture_ex, load_texture},
+    texture::{DrawTextureParams, Texture2D, draw_texture_ex},
     time::{draw_fps, get_time},
     window::{clear_background, screen_height, screen_width},
 };
@@ -17,7 +17,7 @@ use baba::{
     lex::lex,
     parse::parse,
     rule::Rules,
-    scenes::level::LevelScene,
+    scenes::level::{LevelAction, LevelScene},
     unit::{Atlas, Facing, Noun, Property, Unit, lookup_unit},
     world::{
         Direction::{self},
@@ -25,8 +25,8 @@ use baba::{
     },
 };
 
-const WINDOW_WIDTH: u32 = 800;
-const WINDOW_HEIGHT: u32 = 820;
+use crate::game::Resources;
+
 const TILE_SIZE: f32 = 24.0;
 const BACKGROUND_COLOR: Color = Color::new(0.1, 0.1, 0.2, 1.);
 const GRID_COLOR: Color = Color::new(0.0, 0.0, 0.02, 1.);
@@ -39,6 +39,21 @@ const FLOAT_HEIGHT: f64 = 0.35;
 
 const PARTICLE_SPAWN_PERIOD: f64 = 0.3;
 
+const KEYMAP: &[(KeyCode, LevelAction)] = &[
+    (KeyCode::W, LevelAction::Move(Direction::North)),
+    (KeyCode::A, LevelAction::Move(Direction::West)),
+    (KeyCode::S, LevelAction::Move(Direction::South)),
+    (KeyCode::D, LevelAction::Move(Direction::East)),
+    (KeyCode::Up, LevelAction::Move(Direction::North)),
+    (KeyCode::Left, LevelAction::Move(Direction::West)),
+    (KeyCode::Down, LevelAction::Move(Direction::South)),
+    (KeyCode::Right, LevelAction::Move(Direction::East)),
+    (KeyCode::Z, LevelAction::Undo),
+    (KeyCode::Enter, LevelAction::EnterLevel),
+    (KeyCode::Backspace, LevelAction::BackOutOfLevel),
+    (KeyCode::Space, LevelAction::Idle),
+];
+
 struct Font {
     texture: Texture2D,
 }
@@ -46,15 +61,12 @@ struct Font {
 impl Font {
     const WIDTH: f32 = 8.;
     const HEIGHT: f32 = 12.;
-    const FONT_PATH: &str = "assets/font.png";
     const ALPH: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-    async fn new() -> Result<Self, String> {
-        let texture = load_texture(Font::FONT_PATH)
-            .await
-            .map_err(|e| format!("could not load texture {}: {e}", Self::FONT_PATH))?;
-        texture.set_filter(FilterMode::Nearest);
-        Ok(Self { texture })
+    fn new(resources: &Resources) -> Self {
+        Self {
+            texture: resources.font.clone(),
+        }
     }
 
     fn draw(&self, x: f32, y: f32, scale: f32, text: &str, color: Color) {
@@ -187,27 +199,30 @@ impl Layout {
 
 pub struct LevelView {
     key: String,
-    textures: HashMap<String, Texture2D>,
+    resources: Resources,
     particles: Vec<Particle>,
     next_spawn: f64,
     font: Font,
 }
 
 impl LevelView {
-    pub async fn new() -> Result<Self, String> {
-        set_window_size(WINDOW_WIDTH, WINDOW_HEIGHT);
-        let mut viewer = LevelView {
+    pub fn new(resources: &Resources) -> Self {
+        LevelView {
             key: String::default(),
-            textures: HashMap::new(),
+            resources: resources.clone(),
             particles: Vec::new(),
             next_spawn: 0.,
-            font: Font::new().await?,
-        };
-        viewer.store_texture("sprites", "assets/sprites.png").await?;
-        viewer.store_texture("words", "assets/words.png").await?;
-        viewer.store_texture("particles", "assets/particles.png").await?;
-        viewer.store_texture("tiles", "assets/tiles.png").await?;
-        Ok(viewer)
+            font: Font::new(resources),
+        }
+    }
+
+    pub fn input(&self) -> Option<LevelAction> {
+        for (key, action) in KEYMAP {
+            if is_key_pressed(*key) {
+                return Some(*action);
+            }
+        }
+        None
     }
 
     pub fn update(&mut self, scene: &LevelScene, events: &[Event]) {
@@ -251,15 +266,6 @@ impl LevelView {
         self.draw_caption(scene);
         self.draw_units(&rules, scene.current_level(), &layout, time);
         self.draw_particles(&layout, time);
-    }
-
-    async fn store_texture(&mut self, key: &str, path: &str) -> Result<(), String> {
-        let texture = load_texture(path)
-            .await
-            .map_err(|e| format!("could not load texture {path}: {e}"))?;
-        texture.set_filter(FilterMode::Nearest);
-        self.textures.insert(key.to_string(), texture);
-        Ok(())
     }
 
     fn draw_background(&self, layout: &Layout) {
@@ -323,9 +329,9 @@ impl LevelView {
 
     fn atlas_texture(&self, atlas: &Atlas) -> &Texture2D {
         match atlas {
-            Atlas::Sprites => &self.textures["sprites"],
-            Atlas::Words => &self.textures["words"],
-            Atlas::Tiled => &self.textures["tiles"],
+            Atlas::Sprites => &self.resources.sprites,
+            Atlas::Words => &self.resources.words,
+            Atlas::Tiled => &self.resources.tiles,
         }
     }
 
@@ -362,7 +368,7 @@ impl LevelView {
     }
 
     fn draw_particles(&self, layout: &Layout, time: f64) {
-        let texture = &self.textures["particles"];
+        let texture = &self.resources.particles;
         let scale = layout.tile / TILE_SIZE;
         for particle in &self.particles {
             let frame = particle.frame(time).min(particle.frames - 1) as f32;
