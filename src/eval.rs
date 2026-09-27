@@ -4,8 +4,8 @@ use crate::{
     lex::lex,
     parse::parse,
     query::{
-        UnitRef, any_cell_has, any_layer_has, cell_has, query_defeat, query_has, query_is_noun, query_is_property,
-        query_melt, query_selected, query_sink,
+        UnitRef, any_layer_has, cell_has, query_defeat, query_has, query_is_noun, query_is_property, query_melt,
+        query_selected, query_sink,
     },
     rule::Rules,
     unit::{
@@ -150,10 +150,6 @@ impl<'a> Turn<'a> {
                 .collect::<Vec<u64>>(),
             events: self.events,
         }
-    }
-
-    fn is_idle(&self) -> bool {
-        self.input.is_none()
     }
 
     fn check_status(&self) -> TurnStatus {

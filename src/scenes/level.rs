@@ -9,13 +9,13 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct Game {
+pub struct LevelScene {
     pack: Levelpack,
     selected: Vec<u64>,
     visited: Vec<String>,
 }
 
-impl Game {
+impl LevelScene {
     pub fn new(pack: Levelpack) -> Self {
         let root = pack.root().to_string();
         let mut game = Self {
@@ -28,13 +28,13 @@ impl Game {
     }
 
     pub fn from_file(pack_path: &str) -> Result<Self, String> {
-        let pack = Game::read_pack(pack_path)?;
+        let pack = LevelScene::read_pack(pack_path)?;
         Ok(Self::new(pack))
     }
 
     pub fn reload(&mut self, path: &str) -> Result<(), String> {
         let root = self.visited.first().expect("visited cannot be empty");
-        self.pack = Game::read_pack(path)?;
+        self.pack = LevelScene::read_pack(path)?;
 
         // new pack does not have the root. construct a new root
         if !self.pack.has_level(root) {
@@ -82,10 +82,10 @@ impl Game {
     }
 
     pub fn caption(&self) -> Option<&str> {
-        if let Some(link) = self.current_level().link_for(&self.selected) {
-            if let Some(level) = self.pack.get_level(link.key()) {
-                return Some(level.name());
-            }
+        if let Some(link) = self.current_level().link_for(&self.selected)
+            && let Some(level) = self.pack.get_level(link.key())
+        {
+            return Some(level.name());
         }
         let level = self.current_level();
         if level.kind() == LevelKind::Puzzle {

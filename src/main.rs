@@ -1,12 +1,12 @@
+use baba::{scenes::level::LevelScene, world::Direction};
 use macroquad::{
     input::{KeyCode, is_key_pressed},
     window::next_frame,
 };
 
-use crate::view::Viewer;
-use baba::{game::Game, world::Direction};
+use crate::views::level::LevelView;
 
-mod view;
+mod views;
 
 const PACK_SRC: &str = "assets/packs/demo.txt"; // TODO(jw) move hardcoded path
 
@@ -49,9 +49,9 @@ fn get_action() -> Option<Action> {
 
 #[macroquad::main("baba")]
 async fn main() -> Result<(), String> {
-    let mut game = Game::from_file(PACK_SRC)?;
+    let mut game = LevelScene::from_file(PACK_SRC)?;
 
-    let mut viewer = Viewer::new().await?;
+    let mut viewer = LevelView::new().await?;
     loop {
         let mut events = Vec::new();
         match get_action() {

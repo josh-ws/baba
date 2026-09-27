@@ -13,11 +13,11 @@ use macroquad::{
 
 use baba::{
     eval::{Cause, Event},
-    game::Game,
     level::Level,
     lex::lex,
     parse::parse,
     rule::Rules,
+    scenes::level::LevelScene,
     unit::{Atlas, Facing, Noun, Property, Unit, lookup_unit},
     world::{
         Direction::{self},
@@ -185,7 +185,7 @@ impl Layout {
     }
 }
 
-pub struct Viewer {
+pub struct LevelView {
     key: String,
     textures: HashMap<String, Texture2D>,
     particles: Vec<Particle>,
@@ -193,10 +193,10 @@ pub struct Viewer {
     font: Font,
 }
 
-impl Viewer {
+impl LevelView {
     pub async fn new() -> Result<Self, String> {
         set_window_size(WINDOW_WIDTH, WINDOW_HEIGHT);
-        let mut viewer = Viewer {
+        let mut viewer = LevelView {
             key: String::default(),
             textures: HashMap::new(),
             particles: Vec::new(),
@@ -210,16 +210,16 @@ impl Viewer {
         Ok(viewer)
     }
 
-    pub fn update(&mut self, game: &Game, events: &[Event]) {
-        let switched = game.current_key() != self.key;
+    pub fn update(&mut self, scene: &LevelScene, events: &[Event]) {
+        let switched = scene.current_key() != self.key;
         if switched {
-            self.key = game.current_key().to_string();
+            self.key = scene.current_key().to_string();
             self.particles.clear();
         }
 
         let time = get_time();
         if time >= self.next_spawn {
-            let grid = game.current_level().grid();
+            let grid = scene.current_level().grid();
             let rules = parse(&lex(grid));
             self.spawn_ambient(grid, &rules, time);
             self.next_spawn = time + PARTICLE_SPAWN_PERIOD;
@@ -241,15 +241,15 @@ impl Viewer {
         self.particles.retain(|p| p.alive(time));
     }
 
-    pub fn draw(&self, game: &Game) {
+    pub fn draw(&self, scene: &LevelScene) {
         draw_fps();
         let time = get_time();
-        let grid = game.current_level().grid();
+        let grid = scene.current_level().grid();
         let rules = parse(&lex(grid));
         let layout = Layout::new(grid, Vec2::new(screen_width(), screen_height()));
         self.draw_background(&layout);
-        self.draw_caption(game);
-        self.draw_units(&rules, game.current_level(), &layout, time);
+        self.draw_caption(scene);
+        self.draw_units(&rules, scene.current_level(), &layout, time);
         self.draw_particles(&layout, time);
     }
 
@@ -268,8 +268,8 @@ impl Viewer {
         draw_rectangle(origin.x, origin.y, grid_size.x, grid_size.y, GRID_COLOR);
     }
 
-    fn draw_caption(&self, game: &Game) {
-        if let Some(caption) = game.caption() {
+    fn draw_caption(&self, scene: &LevelScene) {
+        if let Some(caption) = scene.caption() {
             let scale = 2.;
             self.font.draw(0., 0., scale, caption, WHITE);
         }

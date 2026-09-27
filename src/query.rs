@@ -162,13 +162,6 @@ pub fn cell_has(rules: &Rules, cell: &Cell, props: &[Property]) -> bool {
     props.iter().all(|p| cell_has_prop(rules, cell, *p))
 }
 
-/// query the grid and check if any cell satisfies all the props in `props`
-/// note, it may be two separate units that satisfy it.
-/// for example, BABA IS YOU and KEY IS WIN with baba and key on the same tile, checking for [You, Win] => true.
-pub fn any_cell_has(rules: &Rules, grid: &Grid, props: &[Property]) -> bool {
-    grid.cells().iter().any(|cell| cell_has(rules, cell, props))
-}
-
 /// like cell_has, but on the float layers instead
 pub fn layer_has(rules: &Rules, layer: &[&Unit], props: &[Property]) -> bool {
     props

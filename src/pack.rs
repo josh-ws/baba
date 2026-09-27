@@ -41,7 +41,7 @@ impl Levelpack {
                 level
                     .links()
                     .values()
-                    .filter(|link| !self.levels.contains_key(*&link.key()))
+                    .filter(|link| !self.levels.contains_key(link.key()))
                     .map(move |link| (key.as_str(), link.key()))
             })
             .collect::<Vec<(&str, &str)>>();
