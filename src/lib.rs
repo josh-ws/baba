@@ -7,5 +7,6 @@ pub mod parse;
 pub mod query;
 pub mod rule;
 pub mod scenes;
+pub mod sprite;
 pub mod unit;
 pub mod world;

@@ -7,6 +7,7 @@ use macroquad::{
 use crate::game::{Game, Resources};
 
 mod game;
+mod render;
 mod views;
 
 const PACK_SRC: &str = "assets/packs/demo.txt"; // TODO(jw) move hardcoded path
