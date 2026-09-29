@@ -4,6 +4,7 @@ use crate::{
     world::{Cell, Direction, Grid, Pos},
 };
 
+#[derive(Debug)]
 pub struct UnitRef {
     pub unit_id: u64,
     pub pos: Pos, // position at the point of query. May be stale

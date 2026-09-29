@@ -4,13 +4,13 @@ use crate::{
     lex::lex,
     parse::parse,
     query::{
-        UnitRef, any_layer_has, cell_has, query_defeat, query_has, query_is_noun, query_is_property, query_melt,
-        query_selected, query_sink,
+        CreateUnitRef, UnitRef, any_layer_has, cell_has, query_defeat, query_has, query_is_noun, query_is_property,
+        query_melt, query_selected, query_sink,
     },
     rule::Rules,
     unit::{
         Property::{self},
-        UnitKind,
+        Unit, UnitKind,
     },
     world::{Direction, Grid, Pos},
 };
@@ -26,10 +26,12 @@ pub enum Cause {
     Sink,
     Defeat,
     Melt,
+    Open,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Event {
+    Created { pos: Pos },
     Destroyed { pos: Pos, cause: Cause },
 }
 
@@ -40,10 +42,18 @@ pub struct TurnResult {
     pub events: Vec<Event>,
 }
 
+#[derive(Debug)]
+enum Chain {
+    Blocked,
+    Clear(Vec<Pos>),     // all of these units must move
+    Opens(Vec<UnitRef>), // an OPEN/SHUT pair
+}
+
 struct Movement<'a> {
     grid: &'a mut Grid,
     rules: &'a Rules,
     moved: HashSet<u64>,
+    events: Vec<Event>,
 }
 
 impl<'a> Movement<'a> {
@@ -52,6 +62,7 @@ impl<'a> Movement<'a> {
             grid,
             rules,
             moved: HashSet::new(),
+            events: Vec::new(),
         }
     }
 
@@ -62,55 +73,103 @@ impl<'a> Movement<'a> {
     /// move `mover` along one tile in provided direction.
     /// no-op if movement is impossible or provided unit has already moved this turn.
     fn try_move(&mut self, mover: u64, dir: Direction) {
-        if self.moved.contains(&mover) {
-            return; // already moved this turn
-        }
-        let Some((from, _)) = self.grid.find_unit(mover) else {
-            return; // unit doesn't exist
-        };
-        let Some(cells_to_move) = self.chain(from, dir) else {
-            self.grid.turn_unit(mover, dir); // movement is impossible (blocked by STOP, etc.) but still turn
-            return;
-        };
-        for (i, pos) in cells_to_move.iter().enumerate().rev() {
-            let to = pos.shift(dir);
-            let currently_moved = if i == 0 {
-                self.grid.move_matching(*pos, to, dir, |u| u.id() == mover)
-            } else {
-                self.grid
-                    .move_matching(*pos, to, dir, |u| self.rules.unit_has_prop(u.noun(), Property::Push))
+        let mut spawns = Vec::new();
+        loop {
+            if self.moved.contains(&mover) {
+                break; // already moved this turn
+            }
+            let Some((from, _)) = self.grid.find_unit(mover) else {
+                break; // unit doesn't exist
             };
-            self.moved.extend(currently_moved);
+            match self.chain(mover, from, dir) {
+                Chain::Blocked => {
+                    self.grid.turn_unit(mover, dir); // movement is impossible (blocked by STOP, etc.) but still turn
+                    break;
+                }
+                Chain::Clear(cells) => {
+                    for (i, pos) in cells.iter().enumerate().rev() {
+                        let to = pos.shift(dir);
+                        let currently_moved = if i == 0 {
+                            self.grid.move_matching(*pos, to, dir, |u| u.id() == mover)
+                        } else {
+                            self.grid
+                                .move_matching(*pos, to, dir, |u| self.rules.unit_has_prop(u.noun(), Property::Push))
+                        };
+                        self.moved.extend(currently_moved);
+                    }
+                    break;
+                }
+                Chain::Opens(pair) => {
+                    // Handle OPEN/SHUT case, then retry movement
+                    let (events, created) = destroy_units(self.grid, self.rules, &pair, Cause::Open);
+                    self.events.extend(events);
+                    spawns.extend(created);
+                }
+            }
         }
+        self.events.extend(create_units(self.grid, &spawns))
     }
 
     /// move from `from` in direction `dir`, returning all cells that must also move this turn
-    fn chain(&self, from: Pos, dir: Direction) -> Option<Vec<Pos>> {
+    /// or an OPEN/SHUT pair that must be destroyed before the move retries
+    fn chain(&self, mover: u64, from: Pos, dir: Direction) -> Chain {
         let mut cells_to_move = vec![from];
+        let mut entering = self
+            .grid
+            .at(from)
+            .units()
+            .iter()
+            .filter(|u| u.id() == mover)
+            .collect::<Vec<&Unit>>();
         let mut next = from.shift(dir);
         loop {
             if !self.grid.in_bounds(next) {
-                return None;
+                return Chain::Blocked;
+            }
+            let units = self.grid.at(next).units();
+            for opener in &entering {
+                if let Some(opened) = units.iter().find(|u| self.opens(opener, u)) {
+                    let at = cells_to_move.last().unwrap();
+                    return Chain::Opens(vec![
+                        UnitRef {
+                            unit_id: opener.id(),
+                            pos: *at,
+                        },
+                        UnitRef {
+                            unit_id: opened.id(),
+                            pos: next,
+                        },
+                    ]);
+                }
             }
             if cell_has(self.rules, self.grid.at(next), &[Property::Stop]) {
-                return None;
+                return Chain::Blocked;
             }
-            let pushable = self
-                .grid
-                .at(next)
-                .units()
+            let pushed = units
                 .iter()
-                .any(|u| !self.moved.contains(&u.id()) && self.rules.unit_has_prop(u.noun(), Property::Push));
-            if !pushable {
-                return Some(cells_to_move);
+                .filter(|u| !self.moved.contains(&u.id()) && self.rules.unit_has_prop(u.noun(), Property::Push))
+                .collect::<Vec<&Unit>>();
+            if pushed.is_empty() {
+                return Chain::Clear(cells_to_move);
             }
             cells_to_move.push(next);
+            entering = pushed;
             next = next.shift(dir); // move to next cell
         }
     }
 
-    fn changed(&self) -> bool {
-        !self.moved.is_empty()
+    fn opens(&self, a: &Unit, b: &Unit) -> bool {
+        let has = |u: &Unit, prop| self.rules.unit_has_prop(u.noun(), prop);
+        let same_float = has(a, Property::Float) == has(b, Property::Float);
+        let open_shut =
+            (has(a, Property::Open) && has(b, Property::Shut)) || (has(a, Property::Shut) && has(b, Property::Open));
+        same_float && open_shut
+    }
+
+    fn finish(self, events: &mut Vec<Event>) -> bool {
+        let changed = !self.moved.is_empty() || !self.events.is_empty();
+        events.extend(self.events);
+        changed
     }
 }
 
@@ -173,7 +232,7 @@ impl<'a> Turn<'a> {
         for unit in &you {
             movement.try_move(unit.unit_id, direction);
         }
-        movement.changed()
+        movement.finish(&mut self.events)
     }
 
     fn move_select(&mut self) -> bool {
@@ -218,7 +277,7 @@ impl<'a> Turn<'a> {
                 movement.try_move(id, direction.flip());
             }
         }
-        movement.changed()
+        movement.finish(&mut self.events)
     }
 
     fn handle_transforms(&mut self) -> bool {
@@ -232,36 +291,53 @@ impl<'a> Turn<'a> {
 
     fn handle_sink(&mut self) -> bool {
         let sinks = query_sink(&self.rules, self.grid);
-        self.destroy_and_create(&sinks, Cause::Sink)
+        self.destroy(&sinks, Cause::Sink)
     }
 
     fn handle_defeats(&mut self) -> bool {
         let defeated = query_defeat(&self.rules, self.grid);
-        self.destroy_and_create(&defeated, Cause::Defeat)
+        self.destroy(&defeated, Cause::Defeat)
     }
 
     fn handle_melt(&mut self) -> bool {
         let melted = query_melt(&self.rules, self.grid);
-        self.destroy_and_create(&melted, Cause::Melt)
+        self.destroy(&melted, Cause::Melt)
     }
 
-    // destroy all units in `doomed` and resolve their HAS rules.
-    fn destroy_and_create(&mut self, doomed: &[UnitRef], cause: Cause) -> bool {
-        let mut changed = false;
-        let ids = doomed.iter().map(|u| u.unit_id).collect::<Vec<u64>>();
-        let spawns = query_has(&self.rules, self.grid, &ids);
-        for target in doomed {
-            if self.grid.destroy_unit(target.unit_id) {
-                changed = true;
-                self.events.push(Event::Destroyed { pos: target.pos, cause });
-            }
-        }
-        for new in &spawns {
-            self.grid
-                .create_unit(new.pos, UnitKind::Object(new.into_noun), new.direction);
-        }
-        changed || !spawns.is_empty()
+    fn destroy(&mut self, doomed: &[UnitRef], cause: Cause) -> bool {
+        let events = destroy_and_create(self.grid, &self.rules, &doomed, cause);
+        let actioned = !events.is_empty();
+        self.events.extend(events);
+        actioned
     }
+}
+
+fn create_units(grid: &mut Grid, create: &[CreateUnitRef]) -> Vec<Event> {
+    let mut events = Vec::new();
+    for new in create {
+        grid.create_unit(new.pos, UnitKind::Object(new.into_noun), new.direction);
+        events.push(Event::Created { pos: new.pos });
+    }
+    events
+}
+
+fn destroy_units(grid: &mut Grid, rules: &Rules, doomed: &[UnitRef], cause: Cause) -> (Vec<Event>, Vec<CreateUnitRef>) {
+    let mut events = Vec::new();
+    let ids = doomed.iter().map(|u| u.unit_id).collect::<Vec<u64>>();
+    let spawns = query_has(rules, grid, &ids);
+    for target in doomed {
+        if grid.destroy_unit(target.unit_id) {
+            events.push(Event::Destroyed { pos: target.pos, cause });
+        }
+    }
+    (events, spawns)
+}
+
+// destroy all units in `doomed` and resolve their HAS rules.
+fn destroy_and_create(grid: &mut Grid, rules: &Rules, doomed: &[UnitRef], cause: Cause) -> Vec<Event> {
+    let (mut events, created) = destroy_units(grid, rules, doomed, cause);
+    events.extend(create_units(grid, &created));
+    events
 }
 
 #[cfg(test)]

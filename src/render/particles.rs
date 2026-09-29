@@ -15,6 +15,7 @@ pub enum ParticleKind {
     Explode,
     Steam,
     Melt,
+    Open,
 }
 
 struct Particle {
@@ -69,6 +70,14 @@ impl Particle {
                 frames: 6,
                 period: 0.04,
             },
+            ParticleKind::Open => Self {
+                tile_size: Vec2::new(8., 8.),
+                tile_offset: Vec2::new(0., 64.),
+                pos: origin,
+                birth: now,
+                frames: 7,
+                period: 0.05,
+            },
         }
     }
 
@@ -101,6 +110,7 @@ impl Particles {
             ParticleKind::Explode => (20, 0.6, 1.0),
             ParticleKind::Steam => (1, 0.5, 0.05),
             ParticleKind::Melt => (1, 0., 1.0),
+            ParticleKind::Open => (5, 0.5, 1.0),
         };
         let centre = Vec2::new(pos.x as f32 + 0.5, pos.y as f32 + 0.5);
         for _ in 0..count {

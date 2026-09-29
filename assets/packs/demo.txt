@@ -80,12 +80,23 @@ Link = 3,2,and,2
 Link = 4,2,hotmelt,3
 Link = 5,2,float,4
 Link = 6,2,walls,5
+Link = 2,3,openclose,6
 Data =
 wt wt WT    AN LE IS FO
 wt wt ..    .. .. .. ..
 wt .. cu/le le le le le
-wt .. ..    .. .. .. wt
+wt .. le    .. .. .. wt
 .. .. ..    .. .. wt wt
+
+[openclose]
+Name = Open and Close
+Data =
+BA IS YO DO HA DO AN IS SH AN ST
+.. .. .. .. .. .. .. .. .. .. ..
+.. .. .. .. .. .. .. .. .. .. ..
+.. ba .. .. ke do .. .. .. .. ..
+.. .. .. .. .. .. .. .. .. .. ..
+KE HA KE AN IS OP AN PU .. .. ..
 
 [and]
 Name = And

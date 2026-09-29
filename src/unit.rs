@@ -106,12 +106,16 @@ const UNIT_TYPES: &[UnitTypeData] = &[
     word(Text::Property(Property::Hot), "HO", 21),
     word(Text::Property(Property::Melt), "ME", 22),
     word(Text::Property(Property::Float), "FO", 23),
+    word(Text::Noun(Noun::Door), "DO", 24),
+    word(Text::Property(Property::Shut), "SH", 25),
+    word(Text::Property(Property::Open), "OP", 26),
     object(Noun::Baba, "ba", 0, Facing::Directional, UnitGroup::Characters),
     object(Noun::Flag, "fl", 1, Facing::Fixed, UnitGroup::Item),
     object(Noun::Rock, "ro", 2, Facing::Fixed, UnitGroup::Item),
     object(Noun::Cursor, "cu", 4, Facing::Fixed, UnitGroup::Text),
     object(Noun::Level, "le", 5, Facing::Fixed, UnitGroup::Ground),
     object(Noun::Key, "ke", 8, Facing::Fixed, UnitGroup::Item),
+    object(Noun::Door, "do", 9, Facing::Fixed, UnitGroup::Item),
     tiled(Noun::Water, "wt", 1, UnitGroup::Liquid),
     tiled(Noun::Lava, "la", 4, UnitGroup::Liquid),
     tiled(Noun::Path, "pa", 7, UnitGroup::Ground),
@@ -139,6 +143,7 @@ pub enum Noun {
     Water,
     Key,
     Lava,
+    Door,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -161,6 +166,8 @@ pub enum Property {
     Hot,
     Melt,
     Float,
+    Open,
+    Shut,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
