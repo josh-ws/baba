@@ -83,6 +83,17 @@ pub fn query_melt(rules: &Rules, grid: &Grid) -> Vec<UnitRef> {
     )
 }
 
+/// query the grid for all OPEN and SHUT units that share a float layer with the opposite property
+/// i.e. A IS OPEN B IS SHUT or A IS OPEN AND SHUT
+pub fn query_open_shut(rules: &Rules, grid: &Grid) -> Vec<UnitRef> {
+    query_layers(
+        rules,
+        grid,
+        |r, layer| layer_has(r, layer, &[Property::Open, Property::Shut]),
+        |r, u| r.unit_has_prop(u.noun(), Property::Open) || r.unit_has_prop(u.noun(), Property::Shut),
+    )
+}
+
 /// query the grid for all nouns `A` overlapping `B` where B IS SELECT
 pub fn query_selected(rules: &Rules, grid: &Grid) -> Vec<UnitRef> {
     query_cells(

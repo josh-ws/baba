@@ -5,8 +5,8 @@ use crate::{
     lex::lex,
     parse::parse,
     query::{
-        UnitRef, any_layer_has, cell_has, query_defeat, query_is_noun, query_is_property, query_melt, query_selected,
-        query_sink,
+        UnitRef, any_layer_has, cell_has, query_defeat, query_is_noun, query_is_property, query_melt, query_open_shut,
+        query_selected, query_sink,
     },
     rule::Rules,
     unit::{
@@ -179,6 +179,8 @@ impl Turn {
         self.reparse();
         self.handle_defeats();
         self.reparse();
+        self.handle_open_shut();
+        self.reparse();
         let status = self.check_status();
         let selected = self.get_selected();
         let (grid, events) = self.board.finish();
@@ -282,6 +284,11 @@ impl Turn {
     fn handle_melt(&mut self) {
         let melted = query_melt(&self.rules, self.board.grid());
         self.destroy_all(&melted, Cause::Melt);
+    }
+
+    fn handle_open_shut(&mut self) {
+        let opened = query_open_shut(&self.rules, self.board.grid());
+        self.destroy_all(&opened, Cause::Open);
     }
 
     fn destroy_all(&mut self, doomed: &[UnitRef], cause: Cause) {
@@ -682,5 +689,14 @@ mod tests {
         expect("BA IS YO AN FO WA IS ST AN FO ba wa ..", ">", "BA IS YO AN FO WA IS ST AN FO ba wa ..");
         expect("BA IS YO AN FO WA IS PU .. ba wa", ">", "BA IS YO AN FO WA IS PU .. ba wa");
         expect("BA IS YO AN FO WA IS PU AN FO .. ba wa", ">", "BA IS YO AN FO WA IS PU AN FO .. ba wa");
+    }
+
+    #[test]
+    fn open_shut() {
+        expect("KE IS OP DO IS SH ke/do", ">", "KE IS OP DO IS SH ..");
+        expect("KE IS OP DO IS SH ke/do/ro", ">", "KE IS OP DO IS SH ro");
+        expect("KE IS OP AN SH ke", ">", "KE IS OP AN SH ..");
+        expect("KE IS OP AN FO DO IS SH ke/do", ">", "KE IS OP AN FO DO IS SH ke/do");
+        expect("KE IS OP DO IS SH DO HA RO ke/do", ">", "KE IS OP DO IS SH DO HA RO ro");
     }
 }

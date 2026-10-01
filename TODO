@@ -1,4 +1,4 @@
-* OPEN/SHUT should check overlaps and self
+* OPEN/SHUT movement check should pair 1:1. overlap check should check many SHUT for each OPEN object
 * Add in compound rules: NOT
 * Conditions: ON, NEAR, ...
 * Add a few puzzles so there is something to play with when running
