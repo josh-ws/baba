@@ -112,10 +112,9 @@ impl Level {
     }
 
     pub fn update(&mut self, dir: Option<Direction>) -> TurnResult {
-        let before = self.grid.clone();
-        let result = Turn::new(&mut self.grid, dir).run();
-        if before != self.grid {
-            self.grid_history.push(before);
+        let (grid, result) = Turn::new(self.grid.clone(), dir).run();
+        if grid != self.grid {
+            self.grid_history.push(std::mem::replace(&mut self.grid, grid));
         }
         result
     }

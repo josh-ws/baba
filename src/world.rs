@@ -169,13 +169,11 @@ impl Grid {
         self.at_mut(pos).units_mut().push(unit);
     }
 
-    pub fn destroy_unit(&mut self, id: u64) -> bool {
-        if let Some((pos, _)) = self.find_unit(id) {
-            self.at_mut(pos).units_mut().retain(|u| u.id() != id);
-            true
-        } else {
-            false
-        }
+    pub fn destroy_unit(&mut self, id: u64) -> Option<(Pos, Unit)> {
+        let (pos, _) = self.find_unit(id)?;
+        let units = self.at_mut(pos).units_mut();
+        let i = units.iter().position(|u| u.id() == id)?;
+        Some((pos, units.remove(i)))
     }
 
     pub fn turn_unit(&mut self, id: u64, dir: Direction) {
@@ -204,13 +202,12 @@ impl Grid {
         moved
     }
 
-    pub fn transform_unit(&mut self, id: u64, pos: Pos, into: Noun) {
-        let Some(i) = self.at(pos).units().iter().position(|u| u.id() == id) else {
-            return;
-        };
-        let new_id = self.next_id();
-        let units = self.at_mut(pos).units_mut();
-        let dir = units[i].direction();
-        units[i] = Unit::new(new_id, UnitKind::Object(into), dir);
+    pub fn transform_unit(&mut self, id: u64, into: &[Noun]) {
+        let Some((pos, unit)) = self.find_unit(id) else { return };
+        let dir = unit.direction();
+        for noun in into {
+            self.create_unit(pos, UnitKind::Object(*noun), dir);
+        }
+        self.destroy_unit(id);
     }
 }

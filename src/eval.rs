@@ -1,16 +1,17 @@
 use std::collections::HashSet;
 
 use crate::{
+    board::Board,
     lex::lex,
     parse::parse,
     query::{
-        CreateUnitRef, UnitRef, any_layer_has, cell_has, query_defeat, query_has, query_is_noun, query_is_property,
-        query_melt, query_selected, query_sink,
+        UnitRef, any_layer_has, cell_has, query_defeat, query_is_noun, query_is_property, query_melt, query_selected,
+        query_sink,
     },
     rule::Rules,
     unit::{
         Property::{self},
-        Unit, UnitKind,
+        Unit,
     },
     world::{Direction, Grid, Pos},
 };
@@ -32,7 +33,8 @@ pub enum Cause {
 #[derive(Debug, PartialEq)]
 pub enum Event {
     Created { pos: Pos },
-    Destroyed { pos: Pos, cause: Cause },
+    Destroyed { unit: Unit, pos: Pos, cause: Cause },
+    Moved { id: u64, from: Pos, to: Pos },
 }
 
 #[derive(Debug, PartialEq)]
@@ -45,77 +47,67 @@ pub struct TurnResult {
 #[derive(Debug)]
 enum Chain {
     Blocked,
-    Clear(Vec<Pos>),     // all of these units must move
-    Opens(Vec<UnitRef>), // an OPEN/SHUT pair
+    Clear(Vec<Vec<u64>>), // all of these units must move
+    Opens(u64, u64),      // an OPEN/SHUT pair
 }
 
 struct Movement<'a> {
-    grid: &'a mut Grid,
+    board: &'a mut Board,
     rules: &'a Rules,
     moved: HashSet<u64>,
-    events: Vec<Event>,
 }
 
 impl<'a> Movement<'a> {
-    fn new(grid: &'a mut Grid, rules: &'a Rules) -> Self {
+    fn new(board: &'a mut Board, rules: &'a Rules) -> Self {
         Self {
-            grid,
+            board,
             rules,
             moved: HashSet::new(),
-            events: Vec::new(),
         }
-    }
-
-    fn turn(&mut self, mover: u64, dir: Direction) {
-        self.grid.turn_unit(mover, dir);
     }
 
     /// move `mover` along one tile in provided direction.
     /// no-op if movement is impossible or provided unit has already moved this turn.
     fn try_move(&mut self, mover: u64, dir: Direction) {
-        let mut spawns = Vec::new();
+        let mark = self.board.mark();
         loop {
             if self.moved.contains(&mover) {
                 break; // already moved this turn
             }
-            let Some((from, _)) = self.grid.find_unit(mover) else {
+            let Some((from, _)) = self.board.grid().find_unit(mover) else {
                 break; // unit doesn't exist
             };
             match self.chain(mover, from, dir) {
                 Chain::Blocked => {
-                    self.grid.turn_unit(mover, dir); // movement is impossible (blocked by STOP, etc.) but still turn
+                    self.board.face(mover, dir); // movement is impossible (blocked by STOP, etc.) but still turn
                     break;
                 }
-                Chain::Clear(cells) => {
-                    for (i, pos) in cells.iter().enumerate().rev() {
-                        let to = pos.shift(dir);
-                        let currently_moved = if i == 0 {
-                            self.grid.move_matching(*pos, to, dir, |u| u.id() == mover)
-                        } else {
-                            self.grid
-                                .move_matching(*pos, to, dir, |u| self.rules.unit_has_prop(u.noun(), Property::Push))
-                        };
-                        self.moved.extend(currently_moved);
+                Chain::Clear(groups) => {
+                    for group in groups.iter().rev() {
+                        for &id in group {
+                            self.board.step(id, dir);
+                            self.moved.insert(id);
+                        }
                     }
                     break;
                 }
-                Chain::Opens(pair) => {
+                Chain::Opens(a, b) => {
                     // Handle OPEN/SHUT case, then retry movement
-                    let (events, created) = destroy_units(self.grid, self.rules, &pair, Cause::Open);
-                    self.events.extend(events);
-                    spawns.extend(created);
+                    self.board.destroy(a, Cause::Open);
+                    self.board.destroy(b, Cause::Open);
                 }
             }
         }
-        self.events.extend(create_units(self.grid, &spawns))
+        spawn_has(self.board, self.rules, mark);
     }
 
     /// move from `from` in direction `dir`, returning all cells that must also move this turn
     /// or an OPEN/SHUT pair that must be destroyed before the move retries
     fn chain(&self, mover: u64, from: Pos, dir: Direction) -> Chain {
-        let mut cells_to_move = vec![from];
+        let mut groups = vec![vec![mover]];
         let mut entering = self
-            .grid
+            .board
+            .grid()
             .at(from)
             .units()
             .iter()
@@ -123,26 +115,16 @@ impl<'a> Movement<'a> {
             .collect::<Vec<&Unit>>();
         let mut next = from.shift(dir);
         loop {
-            if !self.grid.in_bounds(next) {
+            if !self.board.grid().in_bounds(next) {
                 return Chain::Blocked;
             }
-            let units = self.grid.at(next).units();
+            let units = self.board.grid().at(next).units();
             for opener in &entering {
                 if let Some(opened) = units.iter().find(|u| self.opens(opener, u)) {
-                    let at = cells_to_move.last().unwrap();
-                    return Chain::Opens(vec![
-                        UnitRef {
-                            unit_id: opener.id(),
-                            pos: *at,
-                        },
-                        UnitRef {
-                            unit_id: opened.id(),
-                            pos: next,
-                        },
-                    ]);
+                    return Chain::Opens(opener.id(), opened.id());
                 }
             }
-            if cell_has(self.rules, self.grid.at(next), &[Property::Stop]) {
+            if cell_has(self.rules, self.board.grid().at(next), &[Property::Stop]) {
                 return Chain::Blocked;
             }
             let pushed = units
@@ -150,9 +132,9 @@ impl<'a> Movement<'a> {
                 .filter(|u| !self.moved.contains(&u.id()) && self.rules.unit_has_prop(u.noun(), Property::Push))
                 .collect::<Vec<&Unit>>();
             if pushed.is_empty() {
-                return Chain::Clear(cells_to_move);
+                return Chain::Clear(groups);
             }
-            cells_to_move.push(next);
+            groups.push(pushed.iter().map(|u| u.id()).collect());
             entering = pushed;
             next = next.shift(dir); // move to next cell
         }
@@ -165,54 +147,60 @@ impl<'a> Movement<'a> {
             (has(a, Property::Open) && has(b, Property::Shut)) || (has(a, Property::Shut) && has(b, Property::Open));
         same_float && open_shut
     }
-
-    fn finish(self, events: &mut Vec<Event>) -> bool {
-        let changed = !self.moved.is_empty() || !self.events.is_empty();
-        events.extend(self.events);
-        changed
-    }
 }
 
-pub struct Turn<'a> {
-    grid: &'a mut Grid,
+pub struct Turn {
+    board: Board,
     rules: Rules,
     input: Option<Direction>,
-    events: Vec<Event>,
 }
 
-impl<'a> Turn<'a> {
-    pub fn new(grid: &'a mut Grid, input: Option<Direction>) -> Self {
+impl Turn {
+    pub fn new(grid: Grid, input: Option<Direction>) -> Self {
         Self {
-            grid,
-            input,
+            board: Board::new(grid),
             rules: Rules::new(),
-            events: Vec::new(),
+            input,
         }
     }
 
-    pub fn run(mut self) -> TurnResult {
+    pub fn run(mut self) -> (Grid, TurnResult) {
         self.reparse();
-        let you = self.move_you();
-        let movers = self.move_autonomous(Property::Move, true);
-        let auto = self.move_autonomous(Property::Auto, false);
-        let select = self.move_select();
-        (you || movers || auto || select).then(|| self.reparse()); // don't reparse between movements, matches retail
-        self.handle_transforms().then(|| self.reparse());
-        self.handle_sink().then(|| self.reparse());
-        self.handle_melt().then(|| self.reparse());
-        self.handle_defeats().then(|| self.reparse());
-        TurnResult {
-            status: self.check_status(),
-            selected: query_selected(&self.rules, self.grid)
-                .iter()
-                .map(|unit_ref| unit_ref.unit_id)
-                .collect::<Vec<u64>>(),
-            events: self.events,
-        }
+        self.move_you();
+        self.move_autonomous(Property::Move, true);
+        self.move_autonomous(Property::Auto, false);
+        self.move_select();
+        self.reparse();
+        self.handle_transforms();
+        self.reparse();
+        self.handle_sink();
+        self.reparse();
+        self.handle_melt();
+        self.reparse();
+        self.handle_defeats();
+        self.reparse();
+        let status = self.check_status();
+        let selected = self.get_selected();
+        let (grid, events) = self.board.finish();
+        (
+            grid,
+            TurnResult {
+                status,
+                selected,
+                events,
+            },
+        )
+    }
+
+    fn get_selected(&self) -> Vec<u64> {
+        query_selected(&self.rules, self.board.grid())
+            .iter()
+            .map(|unit_ref| unit_ref.unit_id)
+            .collect::<Vec<u64>>()
     }
 
     fn check_status(&self) -> TurnStatus {
-        if any_layer_has(&self.rules, self.grid, &[Property::Win, Property::You]) {
+        if any_layer_has(&self.rules, self.board.grid(), &[Property::Win, Property::You]) {
             TurnStatus::Win
         } else {
             TurnStatus::Continue
@@ -220,45 +208,41 @@ impl<'a> Turn<'a> {
     }
 
     fn reparse(&mut self) {
-        self.rules = parse(&lex(self.grid));
+        self.rules = parse(&lex(self.board.grid()));
     }
 
-    fn move_you(&mut self) -> bool {
+    fn move_you(&mut self) {
         let Some(direction) = self.input else {
-            return false;
+            return;
         };
-        let you = query_is_property(&self.rules, self.grid, Property::You);
-        let mut movement = Movement::new(self.grid, &self.rules);
+        let you = query_is_property(&self.rules, self.board.grid(), Property::You);
+        let mut movement = Movement::new(&mut self.board, &self.rules);
         for unit in &you {
             movement.try_move(unit.unit_id, direction);
         }
-        movement.finish(&mut self.events)
     }
 
-    fn move_select(&mut self) -> bool {
+    fn move_select(&mut self) {
         let Some(direction) = self.input else {
-            return false;
+            return;
         };
-        let select = query_is_property(&self.rules, self.grid, Property::Select);
-        let mut moved = false;
+        let select = query_is_property(&self.rules, self.board.grid(), Property::Select);
         for unit in &select {
             let target = unit.pos.shift(direction);
-            if !self.grid.in_bounds(target) {
+            if !self.board.grid().in_bounds(target) {
                 continue;
             }
-            if !self.grid.at(target).units().iter().any(|f| f.is_object()) {
+            if !self.board.grid().at(target).units().iter().any(|f| f.is_object()) {
                 continue;
             }
-            self.grid
-                .move_matching(unit.pos, target, direction, |p| p.id() == unit.unit_id);
-            moved = true;
+            self.board.step(unit.unit_id, direction);
         }
-        moved
     }
 
-    fn move_autonomous(&mut self, filter: Property, can_flip: bool) -> bool {
+    fn move_autonomous(&mut self, filter: Property, can_flip: bool) {
         let movers = self
-            .grid
+            .board
+            .grid()
             .units()
             .filter_map(|u| {
                 if self.rules.unit_has_prop(u.noun(), filter) {
@@ -269,75 +253,58 @@ impl<'a> Turn<'a> {
             })
             .collect::<Vec<(u64, Direction)>>();
 
-        let mut movement = Movement::new(self.grid, &self.rules);
+        let mut movement = Movement::new(&mut self.board, &self.rules);
         for (id, direction) in movers {
             movement.try_move(id, direction);
             if can_flip && !movement.moved.contains(&id) {
-                movement.turn(id, direction.flip());
                 movement.try_move(id, direction.flip());
             }
         }
-        movement.finish(&mut self.events)
     }
 
-    fn handle_transforms(&mut self) -> bool {
-        let transforms = query_is_noun(&self.rules, self.grid);
-        for t in &transforms {
-            self.grid.transform_unit(t.unit_id, t.pos, t.into_noun);
-        }
-
-        !transforms.is_empty()
-    }
-
-    fn handle_sink(&mut self) -> bool {
-        let sinks = query_sink(&self.rules, self.grid);
-        self.destroy(&sinks, Cause::Sink)
-    }
-
-    fn handle_defeats(&mut self) -> bool {
-        let defeated = query_defeat(&self.rules, self.grid);
-        self.destroy(&defeated, Cause::Defeat)
-    }
-
-    fn handle_melt(&mut self) -> bool {
-        let melted = query_melt(&self.rules, self.grid);
-        self.destroy(&melted, Cause::Melt)
-    }
-
-    fn destroy(&mut self, doomed: &[UnitRef], cause: Cause) -> bool {
-        let events = destroy_and_create(self.grid, &self.rules, &doomed, cause);
-        let actioned = !events.is_empty();
-        self.events.extend(events);
-        actioned
-    }
-}
-
-fn create_units(grid: &mut Grid, create: &[CreateUnitRef]) -> Vec<Event> {
-    let mut events = Vec::new();
-    for new in create {
-        grid.create_unit(new.pos, UnitKind::Object(new.into_noun), new.direction);
-        events.push(Event::Created { pos: new.pos });
-    }
-    events
-}
-
-fn destroy_units(grid: &mut Grid, rules: &Rules, doomed: &[UnitRef], cause: Cause) -> (Vec<Event>, Vec<CreateUnitRef>) {
-    let mut events = Vec::new();
-    let ids = doomed.iter().map(|u| u.unit_id).collect::<Vec<u64>>();
-    let spawns = query_has(rules, grid, &ids);
-    for target in doomed {
-        if grid.destroy_unit(target.unit_id) {
-            events.push(Event::Destroyed { pos: target.pos, cause });
+    fn handle_transforms(&mut self) {
+        let transforms = query_is_noun(&self.rules, self.board.grid());
+        for (source, targets) in &transforms {
+            self.board.transform(*source, targets);
         }
     }
-    (events, spawns)
+
+    fn handle_sink(&mut self) {
+        let sinks = query_sink(&self.rules, self.board.grid());
+        self.destroy_all(&sinks, Cause::Sink);
+    }
+
+    fn handle_defeats(&mut self) {
+        let defeated = query_defeat(&self.rules, self.board.grid());
+        self.destroy_all(&defeated, Cause::Defeat);
+    }
+
+    fn handle_melt(&mut self) {
+        let melted = query_melt(&self.rules, self.board.grid());
+        self.destroy_all(&melted, Cause::Melt);
+    }
+
+    fn destroy_all(&mut self, doomed: &[UnitRef], cause: Cause) {
+        let mark = self.board.mark();
+        for unit in doomed {
+            self.board.destroy(unit.unit_id, cause);
+        }
+        spawn_has(&mut self.board, &self.rules, mark);
+    }
 }
 
-// destroy all units in `doomed` and resolve their HAS rules.
-fn destroy_and_create(grid: &mut Grid, rules: &Rules, doomed: &[UnitRef], cause: Cause) -> Vec<Event> {
-    let (mut events, created) = destroy_units(grid, rules, doomed, cause);
-    events.extend(create_units(grid, &created));
-    events
+fn spawn_has(board: &mut Board, rules: &Rules, mark: usize) {
+    let mut spawns = Vec::new();
+    for event in board.since(mark) {
+        if let Event::Destroyed { unit, pos, .. } = event {
+            for noun in rules.unit_has(unit.noun()) {
+                spawns.push((*pos, noun, unit.direction()));
+            }
+        }
+    }
+    for (pos, noun, dir) in spawns {
+        board.create(pos, noun, dir);
+    }
 }
 
 #[cfg(test)]
@@ -359,7 +326,9 @@ mod tests {
                 'v' => Direction::South,
                 _ => panic!("invalid key {key}"),
             };
-            result = Some(Turn::new(grid, Some(direction)).run());
+            let (next, turn) = Turn::new(grid.clone(), Some(direction)).run();
+            *grid = next;
+            result = Some(turn);
         }
         result.expect("no input given")
     }
@@ -375,12 +344,6 @@ mod tests {
     fn expect_status(setup: &str, input: &str, status: TurnStatus) {
         let mut grid = Grid::from_ascii(setup);
         assert_eq!(play(&mut grid, input).status, status);
-    }
-
-    #[track_caller]
-    fn expect_events(setup: &str, input: &str, events: &[Event]) {
-        let mut grid = Grid::from_ascii(setup);
-        assert_eq!(play(&mut grid, input).events, events);
     }
 
     #[track_caller]
@@ -407,6 +370,19 @@ mod tests {
         play(&mut grid, input);
         assert_eq!(grid.to_ascii(), exp);
         assert_eq!(facing(&grid, noun), dir);
+    }
+
+    #[track_caller]
+    fn expect_destroyed(setup: &str, input: &str, exp: &[(Pos, Cause)]) {
+        let mut grid = Grid::from_ascii(setup);
+        assert_eq!(destroyed(&play(&mut grid, input).events), exp);
+    }
+
+    fn destroyed(events: &[Event]) -> Vec<(Pos, Cause)> {
+        events.iter().filter_map(|e| match e {
+            Event::Destroyed { pos, cause, .. } => Some((*pos, *cause)),
+            _ => None,
+        }).collect()
     }
 
 
@@ -507,7 +483,9 @@ mod tests {
         // `X IS X` cancels any other transform of X
         expect("BA IS RO BA IS BA ba", ">", "BA IS RO BA IS BA ba");
         // only the named unit of a stack transforms
-        expect("RO IS BA ro/wa", ">", "RO IS BA ba/wa");
+        expect("RO IS BA ro/wa", ">", "RO IS BA wa/ba");
+        // transforming into two types
+        expect("BA IS RO AN KE ba", ">", "BA IS RO AN KE ro/ke");
         // the created unit inherits the old one's facing
         let mut grid = Grid::from_ascii("RO IS KE ro");
         face(&mut grid, Pos::new(3, 0), Noun::Rock, Direction::North);
@@ -547,9 +525,9 @@ mod tests {
         expect_status("WT IS SI WT IS WI BA IS YO ba wt", ">", TurnStatus::Continue);
         expect("WT IS SI WT IS WI BA IS YO ba wt", ">", "WT IS SI WT IS WI BA IS YO .. ..");
         // one event per destroyed unit
-        expect_events("BA IS YO WT IS SI ba wt", ">", &[
-            Event::Destroyed { pos: Pos::new(7, 0), cause: Cause::Sink },
-            Event::Destroyed { pos: Pos::new(7, 0), cause: Cause::Sink },
+        expect_destroyed("BA IS YO WT IS SI ba wt", ">", &[
+            (Pos::new(7, 0), Cause::Sink),
+            (Pos::new(7, 0), Cause::Sink),
         ]);
     }
 
@@ -563,8 +541,8 @@ mod tests {
         // only the `you` unit dies, anything else sharing the cell stays
         expect("BA IS YO RO IS PU WA IS DE ba ro wa", ">", "BA IS YO RO IS PU WA IS DE .. ba wa/ro");
         // one event per destroyed unit
-        expect_events("BA IS YO WT IS DE ba wt", ">", &[
-            Event::Destroyed { pos: Pos::new(7, 0), cause: Cause::Defeat },
+        expect_destroyed("BA IS YO WT IS DE ba wt", ">", &[
+            (Pos::new(7, 0), Cause::Defeat),
         ]);
     }
 
@@ -573,6 +551,8 @@ mod tests {
         // a destroyed unit leaves its `has` unit behind, however it died
         expect("BA IS YO BA HA RO WT IS SI ba wt", ">", "BA IS YO BA HA RO WT IS SI .. ro");
         expect("BA IS YO BA HA RO WT IS DE ba wt", ">", "BA IS YO BA HA RO WT IS DE .. wt/ro");
+        // spawns wait until move is resolved
+        expect("KE IS OP AN PU KE HA KE DO IS SH DO HA DO BA IS YO ba ke do ..", ">", "KE IS OP AN PU KE HA KE DO IS SH DO HA DO BA IS YO .. ba/ke do ..");
         // the created unit inherits the destroyed one's facing
         let mut grid = Grid::from_ascii("WT IS SI RO HA KE wt/ro");
         face(&mut grid, Pos::new(6, 0), Noun::Rock, Direction::North);
@@ -622,11 +602,11 @@ mod tests {
         let mut grid = Grid::from_ascii("RO IS MO WT IS SI ro wt");
         let result = play(&mut grid, "^");
         assert_eq!(grid.to_ascii(), "RO IS MO WT IS SI .. ..");
-        assert_eq!(result.events.len(), 2);
+        assert_eq!(destroyed(&result.events).len(), 2);
         let mut grid = Grid::from_ascii("RO IS MO RO IS DE BA IS YO ro ba");
         let result = play(&mut grid, "^");
         assert_eq!(grid.to_ascii(), "RO IS MO RO IS DE BA IS YO .. ro");
-        assert_eq!(result.events.len(), 1);
+        assert_eq!(destroyed(&result.events).len(), 1);
         expect_status("RO IS MO RO IS WI BA IS YO ro ba", "^", TurnStatus::Win);
         expect("RO IS MO RO IS WI BA IS YO ro ba", "^", "RO IS MO RO IS WI BA IS YO .. ba/ro");
         expect("RO IS MO BA IS YO WT IS SI ro ba/wt", "^", "RO IS MO BA IS YO WT IS SI .. ..");
@@ -665,11 +645,11 @@ mod tests {
         let mut grid = Grid::from_ascii("RO IS AU WT IS SI ro wt");
         let result = play(&mut grid, "^");
         assert_eq!(grid.to_ascii(), "RO IS AU WT IS SI .. ..");
-        assert_eq!(result.events.len(), 2);
+        assert_eq!(destroyed(&result.events).len(), 2);
         let mut grid = Grid::from_ascii("RO IS AU RO IS DE BA IS YO ro ba");
         let result = play(&mut grid, "^");
         assert_eq!(grid.to_ascii(), "RO IS AU RO IS DE BA IS YO .. ro");
-        assert_eq!(result.events.len(), 1);
+        assert_eq!(destroyed(&result.events).len(), 1);
         expect_status("RO IS AU RO IS WI BA IS YO ro ba", "^", TurnStatus::Win);
         expect("RO IS AU RO IS WI BA IS YO ro ba", "^", "RO IS AU RO IS WI BA IS YO .. ba/ro");
         expect("RO IS AU BA IS YO WT IS SI ro ba/wt", "^", "RO IS AU BA IS YO WT IS SI .. ..");

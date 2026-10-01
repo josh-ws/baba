@@ -95,8 +95,9 @@ impl LevelView {
         if !switched {
             for event in events {
                 match event {
-                    Event::Created { pos: _ } => (),
-                    Event::Destroyed { pos, cause } => {
+                    Event::Created { .. } => (),
+                    Event::Moved { .. } => (),
+                    Event::Destroyed { pos, cause, .. } => {
                         let kind = match cause {
                             Cause::Defeat => ParticleKind::Explode,
                             Cause::Sink => ParticleKind::Splash,

@@ -1,7 +1,7 @@
 use crate::{
     rule::{Complement, Rules},
     unit::{Noun, Operator, Property, Unit},
-    world::{Cell, Direction, Grid, Pos},
+    world::{Cell, Grid, Pos},
 };
 
 #[derive(Debug)]
@@ -16,40 +16,8 @@ impl UnitRef {
     }
 }
 
-pub struct CreateUnitRef {
-    pub unit_id: u64,
-    pub pos: Pos,
-    pub into_noun: Noun,
-    pub direction: Direction, // inherited from the source unit
-}
-
-impl CreateUnitRef {
-    fn new(unit_id: u64, pos: Pos, into_noun: Noun, direction: Direction) -> Self {
-        Self {
-            unit_id,
-            pos,
-            into_noun,
-            direction,
-        }
-    }
-}
-
-/// query the grid for A HAS B where A is in `doomed`. All new units created by
-/// HAS will be returned along with their position.
-pub fn query_has(rules: &Rules, grid: &Grid, doomed: &[u64]) -> Vec<CreateUnitRef> {
-    let mut result = Vec::new();
-    let items = doomed.iter().filter_map(|id| grid.find_unit(*id));
-    for (pos, unit) in items {
-        let create = rules.unit_has(unit.noun());
-        for created in create {
-            result.push(CreateUnitRef::new(unit.id(), pos, created, unit.direction()));
-        }
-    }
-    result
-}
-
 /// query the grid for all A IS B and return all units to be transformed
-pub fn query_is_noun(rules: &Rules, grid: &Grid) -> Vec<CreateUnitRef> {
+pub fn query_is_noun(rules: &Rules, grid: &Grid) -> Vec<(u64, Vec<Noun>)> {
     let transforms = rules
         .iter()
         .filter_map(|r| match r.complement {
@@ -59,13 +27,17 @@ pub fn query_is_noun(rules: &Rules, grid: &Grid) -> Vec<CreateUnitRef> {
         .collect::<Vec<(Noun, Noun)>>();
 
     let mut result = Vec::new();
-    for (pos, unit) in grid.units_with_pos() {
-        let is_self = transforms.iter().any(|(from, to)| *from == unit.noun() && from == to);
-        if is_self {
-            continue; // e.g. BABA IS BABA. Skip transforms
+    for unit in grid.units() {
+        if transforms.iter().any(|(from, to)| *from == unit.noun() && from == to) {
+            continue; // A IS A. Skip transforms
         }
-        for (_, to) in transforms.iter().filter(|(from, _)| *from == unit.noun()) {
-            result.push(CreateUnitRef::new(unit.id(), pos, *to, unit.direction()));
+        let into = transforms
+            .iter()
+            .filter(|(from, _)| *from == unit.noun())
+            .map(|(_, to)| *to)
+            .collect::<Vec<Noun>>();
+        if !into.is_empty() {
+            result.push((unit.id(), into));
         }
     }
     result

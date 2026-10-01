@@ -1,4 +1,5 @@
 pub mod ascii;
+pub mod board;
 pub mod eval;
 pub mod level;
 pub mod lex;
