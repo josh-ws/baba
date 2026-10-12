@@ -15,6 +15,7 @@ pub enum LevelAction {
     Undo,
     EnterLevel,
     BackOutOfLevel,
+    Restart,
 }
 
 #[derive(Debug)]
@@ -82,21 +83,19 @@ impl LevelScene {
 
     pub fn update(&mut self, action: LevelAction) -> Vec<Event> {
         match action {
-            LevelAction::BackOutOfLevel => {
-                self.return_to_parent();
-                vec![]
-            }
-            LevelAction::EnterLevel => {
-                self.enter_link();
-                vec![]
-            }
-            LevelAction::Idle => self.tick(None),
-            LevelAction::Move(dir) => self.tick(Some(dir)),
-            LevelAction::Undo => {
-                self.undo();
-                vec![]
-            }
+            LevelAction::Idle => return self.tick(None),
+            LevelAction::Move(dir) => return self.tick(Some(dir)),
+            LevelAction::BackOutOfLevel => self.return_to_parent(),
+            LevelAction::EnterLevel => self.enter_link(),
+            LevelAction::Undo => self.undo(),
+            LevelAction::Restart => self.restart(),
         }
+        vec![]
+    }
+
+    fn restart(&mut self) {
+        self.current_level_mut().restart();
+        self.update_selected();
     }
 
     fn tick(&mut self, direction: Option<Direction>) -> Vec<Event> {
@@ -122,13 +121,12 @@ impl LevelScene {
         None
     }
 
-    pub fn enter_link(&mut self) -> bool {
+    pub fn enter_link(&mut self) {
         let Some(link) = self.current_level().link_for(&self.selected) else {
-            return false;
+            return;
         };
         let link = link.key().to_string();
         self.goto(&link);
-        true
     }
 
     pub fn return_to_parent(&mut self) {

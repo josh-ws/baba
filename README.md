@@ -18,6 +18,7 @@ All assets and code are original. Nothing from the original game is used and all
 - Backspace: Return to the previous map/level
 - F5: Reload the level pack from disk
 - Escape: Exit the game
+- R: Restart the current map/level
 
 ## Features 
 

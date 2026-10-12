@@ -47,6 +47,7 @@ const KEYMAP: &[(KeyCode, LevelAction)] = &[
     (KeyCode::Enter, LevelAction::EnterLevel),
     (KeyCode::Backspace, LevelAction::BackOutOfLevel),
     (KeyCode::Space, LevelAction::Idle),
+    (KeyCode::R, LevelAction::Restart),
 ];
 
 pub struct LevelView {

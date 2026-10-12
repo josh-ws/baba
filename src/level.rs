@@ -46,6 +46,7 @@ impl Link {
 #[derive(Debug)]
 pub struct Level {
     name: String,
+    initial_state: Grid,
     grid: Grid,
     kind: LevelKind,
     links: HashMap<u64, Link>,
@@ -57,6 +58,7 @@ impl Default for Level {
         Self {
             name: Default::default(),
             grid: Grid::empty(0, 0),
+            initial_state: Grid::empty(0, 0),
             kind: LevelKind::Puzzle,
             links: HashMap::new(),
             grid_history: vec![],
@@ -105,10 +107,16 @@ impl Level {
             }
         }
         level.grid = Grid::try_from_ascii(&data)?;
+        level.initial_state = level.grid.clone();
         for link in links {
             level.parse_link(link)?;
         }
         Ok(level)
+    }
+
+    pub fn restart(&mut self) {
+        self.grid = self.initial_state.clone();
+        self.grid_history.clear();
     }
 
     pub fn update(&mut self, dir: Option<Direction>) -> TurnResult {
