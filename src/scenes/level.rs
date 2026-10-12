@@ -131,6 +131,9 @@ impl LevelScene {
 
     pub fn return_to_parent(&mut self) {
         if self.visited.len() > 1 {
+            if self.current_level().kind() == LevelKind::Puzzle {
+                self.current_level_mut().restart();
+            }
             self.visited.pop();
             self.update_selected();
         }
@@ -153,5 +156,38 @@ impl LevelScene {
             Ok(src) => Ok(Levelpack::parse(&src)?),
             Err(e) => Err(format!("could not load levelpack from {}: {}", path, e)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const PACK: &str = "
+        Pack = Test Pack
+        Root = root
+
+        [root]
+        Name = Map
+        Kind = map
+        Link = 0,0,puzzle
+        Data =
+        cu/le
+
+        [puzzle]
+        Name = puzzle
+        Data =
+        BA IS YO ba ..
+    ";
+
+    #[test]
+    fn test_return_to_parent_resets_level() {
+        let mut scene = LevelScene::new(Levelpack::parse(PACK).unwrap());
+        scene.update(LevelAction::EnterLevel);
+        let initial = scene.current_level().grid().to_ascii();
+        scene.update(LevelAction::Move(Direction::East));
+        scene.update(LevelAction::BackOutOfLevel);
+        scene.update(LevelAction::EnterLevel);
+        assert_eq!(scene.current_level().grid().to_ascii(), initial);
     }
 }
