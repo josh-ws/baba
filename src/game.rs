@@ -8,10 +8,11 @@ enum ActiveScene {
 }
 
 impl ActiveScene {
-    fn update(&mut self) -> Option<Transition> {
+    fn update(&mut self, accept_input: bool) -> Option<Transition> {
         match self {
             ActiveScene::Level(scene, viewer) => {
-                let events = viewer.input().map(|a| scene.update(a));
+                let act = if accept_input { viewer.input() } else { None };
+                let events = act.map(|a| scene.update(a));
                 viewer.update(scene, &events.unwrap_or_default());
             }
         }
@@ -23,6 +24,24 @@ impl ActiveScene {
             ActiveScene::Level(scene, viewer) => {
                 viewer.draw(scene);
             }
+        }
+    }
+
+    fn is_leaving(&self) -> bool {
+        match self {
+            ActiveScene::Level(scene, _) => scene.pending().is_some(),
+        }
+    }
+
+    fn card(&self) -> Option<String> {
+        match self {
+            ActiveScene::Level(scene, _) => scene.card().map(str::to_string),
+        }
+    }
+
+    fn commit(&mut self) {
+        match self {
+            ActiveScene::Level(scene, _) => scene.commit(),
         }
     }
 }
@@ -88,9 +107,9 @@ impl Game {
     }
 
     pub fn update(&mut self) {
-        if let Some(transition) = self.stack.last_mut().and_then(|s| s.update()) {
-            println!("{transition:?}");
-        }
+        let Some(top) = self.stack.last_mut() else { return };
+        top.commit();
+        top.update(true);
     }
 
     pub fn draw(&self) {

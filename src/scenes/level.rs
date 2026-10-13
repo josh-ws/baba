@@ -8,6 +8,14 @@ use crate::{
     world::Direction,
 };
 
+#[derive(Debug)]
+pub enum Nav {
+    /// Entering this level key
+    Enter(String),
+    /// Backing out of the current level
+    Back,
+}
+
 #[derive(Clone, Copy)]
 pub enum LevelAction {
     Move(Direction),
@@ -23,6 +31,7 @@ pub struct LevelScene {
     pack: Levelpack,
     selected: Vec<u64>,
     visited: Vec<String>,
+    nav: Option<Nav>,
 }
 
 impl LevelScene {
@@ -32,6 +41,7 @@ impl LevelScene {
             pack,
             selected: Vec::new(),
             visited: vec![root],
+            nav: None,
         };
         game.update_selected();
         game
@@ -45,6 +55,9 @@ impl LevelScene {
     pub fn reload(&mut self, path: &str) -> Result<(), String> {
         let root = self.visited.first().expect("visited cannot be empty");
         self.pack = LevelScene::read_pack(path)?;
+
+        // reset navigation
+        self.nav = None;
 
         // new pack does not have the root. construct a new root
         if !self.pack.has_level(root) {
@@ -82,6 +95,9 @@ impl LevelScene {
     }
 
     pub fn update(&mut self, action: LevelAction) -> Vec<Event> {
+        if self.nav.is_some() {
+            return vec![];
+        }
         match action {
             LevelAction::Idle => return self.tick(None),
             LevelAction::Move(dir) => return self.tick(Some(dir)),
@@ -126,22 +142,51 @@ impl LevelScene {
             return;
         };
         let link = link.key().to_string();
-        self.goto(&link);
+        self.nav = Some(Nav::Enter(link));
     }
 
     pub fn return_to_parent(&mut self) {
         if self.visited.len() > 1 {
-            if self.current_level().kind() == LevelKind::Puzzle {
-                self.current_level_mut().restart();
+            self.nav = Some(Nav::Back);
+        }
+    }
+
+    pub fn pending(&self) -> &Option<Nav> {
+        &self.nav
+    }
+
+    pub fn card(&self) -> Option<&str> {
+        match &self.nav {
+            Some(Nav::Enter(key)) => {
+                if let Some(level) = self.pack.get_level(key) {
+                    Some(level.name())
+                } else {
+                    None
+                }
             }
-            self.visited.pop();
-            self.update_selected();
+            _ => None,
+        }
+    }
+
+    pub fn commit(&mut self) {
+        match self.nav.take() {
+            Some(Nav::Enter(key)) => self.goto(&key),
+            Some(Nav::Back) => self.leave(),
+            None => (),
         }
     }
 
     fn goto(&mut self, key: &str) {
         debug_assert!(self.pack.get_level(key).is_some());
         self.visited.push(key.to_string());
+        self.update_selected();
+    }
+
+    fn leave(&mut self) {
+        if self.current_level().kind() == LevelKind::Puzzle {
+            self.current_level_mut().restart();
+        }
+        self.visited.pop();
         self.update_selected();
     }
 

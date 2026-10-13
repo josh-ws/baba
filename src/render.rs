@@ -1,3 +1,4 @@
+pub mod fade;
 pub mod font;
 pub mod grid;
 pub mod layout;
