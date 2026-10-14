@@ -6,10 +6,3 @@ pub mod level;
 pub enum Scene {
     Level(LevelScene),
 }
-
-#[derive(Debug)]
-pub enum Transition {
-    Push(Scene),
-    Replace(Scene),
-    Pop,
-}

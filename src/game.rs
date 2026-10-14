@@ -1,14 +1,17 @@
-use baba::scenes::{Scene, Transition, level::LevelScene};
+use baba::scenes::{Scene, level::LevelScene};
 use macroquad::texture::{FilterMode, Texture2D, load_texture};
 
-use crate::views::level::LevelView;
+use crate::{
+    render::transition::{Transition, TransitionSmoothing, TransitionStyle},
+    views::level::LevelView,
+};
 
 enum ActiveScene {
     Level(LevelScene, LevelView),
 }
 
 impl ActiveScene {
-    fn update(&mut self, accept_input: bool) -> Option<Transition> {
+    fn update(&mut self, accept_input: bool) {
         match self {
             ActiveScene::Level(scene, viewer) => {
                 let act = if accept_input { viewer.input() } else { None };
@@ -16,7 +19,6 @@ impl ActiveScene {
                 viewer.update(scene, &events.unwrap_or_default());
             }
         }
-        None
     }
 
     fn draw(&self) {
@@ -78,6 +80,7 @@ impl Resources {
 pub struct Game {
     resources: Resources,
     stack: Vec<ActiveScene>,
+    transition: Option<Transition>,
 }
 
 impl Game {
@@ -85,6 +88,7 @@ impl Game {
         let mut game = Self {
             resources,
             stack: vec![],
+            transition: None,
         };
         game.push(initial_scene);
         game
@@ -108,13 +112,29 @@ impl Game {
 
     pub fn update(&mut self) {
         let Some(top) = self.stack.last_mut() else { return };
-        top.commit();
-        top.update(true);
+        top.update(self.transition.is_none());
+
+        if let Some(transition) = &mut self.transition {
+            if transition.update() {
+                top.commit();
+            }
+            if !transition.is_active() {
+                self.transition = None;
+            }
+        } else if top.is_leaving() {
+            self.transition = Some(Transition::new(
+                TransitionStyle::Diamond,
+                TransitionSmoothing::Smoothstep,
+            ));
+        }
     }
 
     pub fn draw(&self) {
         if let Some(s) = self.stack.last() {
             s.draw();
+        }
+        if let Some(transition) = &self.transition {
+            transition.draw();
         }
     }
 }
