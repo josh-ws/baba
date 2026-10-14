@@ -1,5 +1,8 @@
 use baba::scenes::{Scene, level::LevelScene};
-use macroquad::texture::{FilterMode, Texture2D, load_texture};
+use macroquad::{
+    rand::rand,
+    texture::{FilterMode, Texture2D, load_texture},
+};
 
 use crate::{
     render::transition::{Transition, TransitionSmoothing, TransitionStyle},
@@ -122,10 +125,13 @@ impl Game {
                 self.transition = None;
             }
         } else if top.is_leaving() {
-            self.transition = Some(Transition::new(
+            let transitions = [
                 TransitionStyle::Diamond,
-                TransitionSmoothing::Smoothstep,
-            ));
+                TransitionStyle::Fade,
+                TransitionStyle::Interlaced,
+            ];
+            let i = (rand() as usize) % transitions.len();
+            self.transition = Some(Transition::new(transitions[i], TransitionSmoothing::Smoothstep));
         }
     }
 

@@ -1,24 +1,26 @@
 use macroquad::{
-    color::{BLACK, Color},
+    color::{BLACK, Color, DARKGRAY, LIGHTGRAY, WHITE},
     math::vec2,
     shapes::{draw_rectangle, draw_triangle},
     window::{screen_height, screen_width},
 };
 
-const COMPLETE_BLACK: i32 = 30;
+const FILL_COLOR: Color = BLACK;
+const COMPLETE_FILL_TIME: i32 = 30;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum TransitionPhase {
     None,
     FadeOut,
-    Black,
+    Fill,
     FadeIn,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum TransitionStyle {
     Fade,
     Diamond,
+    Interlaced,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -53,13 +55,13 @@ impl Transition {
 
     pub fn update(&mut self) -> bool {
         self.timer += 1;
-        if self.phase == TransitionPhase::Black && self.timer >= COMPLETE_BLACK {
+        if self.phase == TransitionPhase::Fill && self.timer >= COMPLETE_FILL_TIME {
             self.phase = TransitionPhase::FadeIn;
             self.timer = 0;
         } else if self.timer >= self.duration {
             match self.phase {
                 TransitionPhase::FadeOut => {
-                    self.phase = TransitionPhase::Black;
+                    self.phase = TransitionPhase::Fill;
                     self.timer = 0;
                     return true;
                 }
@@ -76,14 +78,15 @@ impl Transition {
         if self.phase == TransitionPhase::None {
             return;
         }
-        if self.phase == TransitionPhase::Black {
-            draw_rectangle(0., 0., screen_width(), screen_height(), BLACK);
+        if self.phase == TransitionPhase::Fill {
+            draw_rectangle(0., 0., screen_width(), screen_height(), FILL_COLOR);
             return;
         }
         let t = self.smooth();
         match self.style {
             TransitionStyle::Fade => draw_fade(t),
             TransitionStyle::Diamond => draw_diamond(t),
+            TransitionStyle::Interlaced => draw_interlaced(t),
         }
     }
 
@@ -118,4 +121,24 @@ fn draw_diamond(t: f32) {
     draw_triangle(vec2(w, 0.), vec2(w * (1. - t), 0.), vec2(w, h * t), color);
     draw_triangle(vec2(0., h), vec2(0., h * (1. - t)), vec2(w * t, h), color);
     draw_triangle(vec2(w, h), vec2(w, h * (1. - t)), vec2(w * (1. - t), h), color);
+}
+
+fn draw_interlaced(t: f32) {
+    const NUM_LINES: i32 = 50;
+
+    let color = FILL_COLOR;
+    let line_height = screen_height() / NUM_LINES as f32;
+    for n in 0..NUM_LINES {
+        if n % 2 == 0 {
+            draw_rectangle(0., n as f32 * line_height, screen_width() * t, line_height, color);
+        } else {
+            draw_rectangle(
+                screen_width() * (1. - t),
+                n as f32 * line_height,
+                screen_width(),
+                line_height,
+                color,
+            );
+        }
+    }
 }
