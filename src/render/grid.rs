@@ -19,6 +19,7 @@ use crate::{
     render::{
         font::Font,
         layout::{Layout, TILE_SIZE},
+        unit::{DrawUnitParams, UnitRenderer},
     },
 };
 
@@ -32,18 +33,14 @@ const FLOAT_HEIGHT: f64 = 0.35;
 
 pub struct GridRenderer {
     font: Font,
-    sprites: Texture2D,
-    words: Texture2D,
-    tiles: Texture2D,
+    unit_renderer: UnitRenderer,
 }
 
 impl GridRenderer {
     pub fn new(resources: &Resources) -> Self {
         Self {
             font: Font::new(resources.font.clone()),
-            sprites: resources.sprites.clone(),
-            words: resources.words.clone(),
-            tiles: resources.tiles.clone(),
+            unit_renderer: UnitRenderer::new(resources),
         }
     }
 
@@ -62,10 +59,18 @@ impl GridRenderer {
             .collect::<Vec<(Pos, &Unit, bool)>>();
         units.sort_unstable_by_key(|(_, unit, float)| (*float, lookup_unit(unit.kind()).group));
         for (pos, unit, float) in units {
-            let offset = if float { lift } else { 0. };
-            self.draw_unit(grid, unit, pos, layout, wobble, offset);
+            let offset_y = if float { lift } else { 0. };
+            let params = DrawUnitParams {
+                grid,
+                unit,
+                target: pos,
+                layout,
+                wobble,
+                offset_y,
+            };
+            self.unit_renderer.draw(&params);
             if let Some(link) = links.get(&unit.id()) {
-                self.draw_link_label(link.display(), pos, layout, offset);
+                self.draw_link_label(link.display(), pos, layout, offset_y);
             }
         }
     }
@@ -75,32 +80,6 @@ impl GridRenderer {
         let at = layout.screen_position(pos) + ((Vec2::splat(layout.tile()) - glyph) / 2.).floor();
         self.font
             .draw(at.x, at.y - offset as f32, layout.scale(), display, WHITE);
-    }
-
-    fn draw_unit(&self, grid: &Grid, unit: &Unit, pos: Pos, layout: &Layout, wobble: usize, offset_y: f64) {
-        let frame = sprite_frame(grid, unit, pos, wobble);
-        let texture = self.atlas_texture(&frame.atlas);
-        let params = DrawTextureParams {
-            source: Some(Rect {
-                x: frame.column as f32 * TILE_SIZE,
-                y: frame.row as f32 * TILE_SIZE,
-                w: TILE_SIZE,
-                h: TILE_SIZE,
-            }),
-            dest_size: Some(Vec2::new(layout.tile(), layout.tile())),
-            flip_x: frame.flip_x,
-            ..Default::default()
-        };
-        let at = layout.screen_position(pos);
-        draw_texture_ex(texture, at.x, at.y - offset_y as f32, WHITE, params);
-    }
-
-    fn atlas_texture(&self, atlas: &Atlas) -> &Texture2D {
-        match atlas {
-            Atlas::Sprites => &self.sprites,
-            Atlas::Words => &self.words,
-            Atlas::Tiled => &self.tiles,
-        }
     }
 }
 
