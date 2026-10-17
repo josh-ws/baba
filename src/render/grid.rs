@@ -3,22 +3,20 @@ use std::{collections::HashMap, f64};
 use baba::{
     level::Link,
     rule::Rules,
-    sprite::sprite_frame,
-    unit::{Atlas, Property, Unit, lookup_unit},
+    unit::{Property, Unit, lookup_unit},
     world::{Grid, Pos},
 };
 use macroquad::{
     color::{Color, WHITE},
-    math::{Rect, Vec2},
+    math::Vec2,
     shapes::draw_rectangle,
-    texture::{DrawTextureParams, Texture2D, draw_texture_ex},
 };
 
 use crate::{
     game::Resources,
     render::{
         font::Font,
-        layout::{Layout, TILE_SIZE},
+        layout::Layout,
         unit::{DrawUnitParams, UnitRenderer},
     },
 };

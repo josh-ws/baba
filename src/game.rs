@@ -38,12 +38,6 @@ impl ActiveScene {
         }
     }
 
-    fn card(&self) -> Option<String> {
-        match self {
-            ActiveScene::Level(scene, _) => scene.card().map(str::to_string),
-        }
-    }
-
     fn commit(&mut self) {
         match self {
             ActiveScene::Level(scene, _) => scene.commit(),
